@@ -23,3 +23,10 @@ class WorkspaceDeleteRequested extends WorkspaceEvent {
   @override
   List<Object?> get props => [workspaceId];
 }
+
+class WorkspacesDeleteRequested extends WorkspaceEvent {
+  final List<String> workspaceIds;
+  const WorkspacesDeleteRequested(this.workspaceIds);
+  @override
+  List<Object?> get props => [workspaceIds];
+}

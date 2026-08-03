@@ -15,6 +15,7 @@ import '../../features/auth/domain/usecases/get_current_user_usecase.dart';
 import '../../features/auth/domain/usecases/login_usecase.dart';
 import '../../features/auth/domain/usecases/register_usecase.dart';
 import '../../features/auth/domain/usecases/upload_photo_usecase.dart';
+import '../../features/auth/domain/usecases/update_profile_usecase.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 
 import '../../features/workspace/data/datasources/workspace_remote_data_source.dart';
@@ -54,12 +55,12 @@ const bool _useMockData = true;
 Future<void> setupServiceLocator() async {
   // ---------- External ----------
   final sharedPreferences = await SharedPreferences.getInstance();
-  getIt.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
+  getIt.registerLazySingleton(() => sharedPreferences);
 
   // ---------- Core ----------
-  getIt.registerLazySingleton<DioClient>(() => DioClient());
-  getIt.registerLazySingleton<TokenStorage>(() => TokenStorage());
-  getIt.registerLazySingleton<AppPreferences>(() => AppPreferences(getIt()));
+  getIt.registerLazySingleton(() => DioClient());
+  getIt.registerLazySingleton(() => TokenStorage());
+  getIt.registerLazySingleton(() => AppPreferences(getIt()));
 
   // ---------- Core Blocs (theme / locale) ----------
   getIt.registerFactory(() => ThemeBloc(appPreferences: getIt()));
@@ -82,6 +83,7 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton(() => RegisterUseCase(getIt()));
   getIt.registerLazySingleton(() => UploadPhotoUseCase(getIt()));
   getIt.registerLazySingleton(() => GetCurrentUserUseCase(getIt()));
+  getIt.registerLazySingleton(() => UpdateProfileUseCase(getIt()));
 
   // ---------- Auth: Bloc ----------
   getIt.registerFactory(
@@ -90,6 +92,7 @@ Future<void> setupServiceLocator() async {
       registerUseCase: getIt(),
       uploadPhotoUseCase: getIt(),
       getCurrentUserUseCase: getIt(),
+      updateProfileUseCase: getIt(),
       tokenStorage: getIt(),
     ),
   );
@@ -171,7 +174,7 @@ Future<void> setupServiceLocator() async {
       getTasksUseCase: getIt(),
       createTaskUseCase: getIt(),
       updateTaskStatusUseCase: getIt(),
-      uploadTaskAttachmentsUseCase: getIt(), 
+      uploadTaskAttachmentsUseCase: getIt(),
       deleteTaskUseCase: getIt(),
     ),
   );

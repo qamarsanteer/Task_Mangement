@@ -24,23 +24,116 @@ class ProjectsScreen extends StatelessWidget {
   }
 }
 
-class _ProjectsView extends StatelessWidget {
+class _ProjectsView extends StatefulWidget {
   final WorkspaceEntity workspace;
   const _ProjectsView({required this.workspace});
+
+  @override
+  State<_ProjectsView> createState() => _ProjectsViewState();
+}
+
+class _ProjectsViewState extends State<_ProjectsView> {
+  final Set<String> _selectedIds = {};
+  bool _isSelectionMode = false;
+
+  void _toggleSelection(String id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+        if (_selectedIds.isEmpty) _isSelectionMode = false;
+      } else {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  void _activateSelection(String id) {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedIds.add(id);
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedIds.clear();
+      _isSelectionMode = false;
+    });
+  }
+
+  void _selectAll(List<ProjectEntity> items) {
+    setState(() {
+      _selectedIds.addAll(items.map((e) => e.id));
+    });
+  }
+
+  void _confirmDeleteSelected(BuildContext context, AppLocalizations l10n) {
+    final bloc = context.read<ProjectBloc>();
+    final count = _selectedIds.length;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(l10n.deleteProjectTitle),
+        content: Text('Are you sure you want to delete $count project(s)?\n${l10n.actionCannotBeUndone}'),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              bloc.add(ProjectsDeleteRequested(_selectedIds.toList()));
+              Navigator.pop(dialogContext);
+              _clearSelection();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: Text(l10n.delete),
+          ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(workspace.name),
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () => _showComingSoon(context, l10n)),
-          IconButton(icon: const Icon(Icons.filter_list), onPressed: () => _showComingSoon(context, l10n)),
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: () => _showComingSoon(context, l10n)),
-        ],
-      ),
+      appBar: _isSelectionMode
+          ? AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _clearSelection,
+              ),
+              title: Text('${_selectedIds.length} selected'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    final state = context.read<ProjectBloc>().state;
+                    final items = state is ProjectLoaded
+                        ? state.projects
+                        : state is ProjectError
+                            ? state.projects
+                            : <ProjectEntity>[];
+                    _selectAll(items);
+                  },
+                  child: const Text('Select All', style: TextStyle(color: Colors.white)),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.more_vert),
+                  onPressed: _selectedIds.isEmpty
+                      ? null
+                      : () => _confirmDeleteSelected(context, l10n),
+                ),
+              ],
+            )
+          : AppBar(
+              title: Text(widget.workspace.name),
+              actions: [
+                IconButton(icon: const Icon(Icons.search), onPressed: () => _showComingSoon(context, l10n)),
+                IconButton(icon: const Icon(Icons.filter_list), onPressed: () => _showComingSoon(context, l10n)),
+                IconButton(icon: const Icon(Icons.more_vert), onPressed: () => _showComingSoon(context, l10n)),
+              ],
+            ),
       body: BlocConsumer<ProjectBloc, ProjectState>(
         listener: (context, state) {
           if (state is ProjectError) {
@@ -63,7 +156,7 @@ class _ProjectsView extends StatelessWidget {
               ? state.projects
               : state is ProjectError
                   ? state.projects
-                  : <ProjectEntity>[];
+                  : [];
 
           if (projects.isEmpty) {
             return _buildEmptyState(context, l10n);
@@ -125,20 +218,30 @@ class _ProjectsView extends StatelessWidget {
 
   Widget _buildProjectTile(BuildContext context, AppLocalizations l10n, ProjectEntity project) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isSelected = _selectedIds.contains(project.id);
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        color: isSelected
+            ? AppColors.primary.withOpacity(0.15)
+            : (isDark ? AppColors.surfaceDark : AppColors.surfaceLight),
         borderRadius: BorderRadius.circular(16),
+        border: isSelected ? Border.all(color: AppColors.primary, width: 2) : null,
         boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 8, offset: const Offset(0, 4))],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: IconButton(
-          icon: const Icon(Icons.check_box_outline_blank, color: AppColors.error),
-          tooltip: l10n.delete,
-          onPressed: () => _confirmDeleteProject(context, l10n, project),
-        ),
+        leading: _isSelectionMode
+            ? Checkbox(
+                value: isSelected,
+                onChanged: (_) => _toggleSelection(project.id),
+                activeColor: AppColors.primary,
+              )
+            : IconButton(
+                icon: const Icon(Icons.check_box_outline_blank, color: AppColors.error),
+                tooltip: l10n.delete,
+                onPressed: () => _confirmDeleteProject(context, l10n, project),
+              ),
         title: Text(
           project.name,
           style: TextStyle(
@@ -147,11 +250,20 @@ class _ProjectsView extends StatelessWidget {
             color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
           ),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => TasksScreen(project: project)),
-        ),
+        trailing: _isSelectionMode
+            ? null
+            : const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () {
+          if (_isSelectionMode) {
+            _toggleSelection(project.id);
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => TasksScreen(project: project)),
+            );
+          }
+        },
+        onLongPress: () => _activateSelection(project.id),
       ),
     );
   }
@@ -209,17 +321,17 @@ class _ProjectsView extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
           ElevatedButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
-                bloc.add(ProjectCreateRequested(workspaceId: workspace.id, name: controller.text.trim()));
+                bloc.add(ProjectCreateRequested(workspaceId: widget.workspace.id, name: controller.text.trim()));
                 Navigator.pop(dialogContext);
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
             child: Text(l10n.create),
           ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
         ],
       ),
     );
@@ -235,7 +347,6 @@ class _ProjectsView extends StatelessWidget {
         title: Text(l10n.deleteProjectTitle),
         content: Text('${l10n.deleteProjectConfirm(project.name)}\n${l10n.actionCannotBeUndone}'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
           ElevatedButton(
             onPressed: () {
               bloc.add(ProjectDeleteRequested(project.id));
@@ -244,6 +355,7 @@ class _ProjectsView extends StatelessWidget {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             child: Text(l10n.delete),
           ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
         ],
       ),
     );

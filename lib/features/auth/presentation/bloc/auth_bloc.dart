@@ -5,6 +5,7 @@ import '../../domain/usecases/get_current_user_usecase.dart';
 import '../../domain/usecases/login_usecase.dart';
 import '../../domain/usecases/register_usecase.dart';
 import '../../domain/usecases/upload_photo_usecase.dart';
+import '../../domain/usecases/update_profile_usecase.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -13,6 +14,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final RegisterUseCase _registerUseCase;
   final UploadPhotoUseCase _uploadPhotoUseCase;
   final GetCurrentUserUseCase _getCurrentUserUseCase;
+  final UpdateProfileUseCase _updateProfileUseCase;
   final TokenStorage _tokenStorage;
 
   AuthBloc({
@@ -20,17 +22,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required RegisterUseCase registerUseCase,
     required UploadPhotoUseCase uploadPhotoUseCase,
     required GetCurrentUserUseCase getCurrentUserUseCase,
+    required UpdateProfileUseCase updateProfileUseCase,
     TokenStorage? tokenStorage,
   })  : _loginUseCase = loginUseCase,
         _registerUseCase = registerUseCase,
         _uploadPhotoUseCase = uploadPhotoUseCase,
         _getCurrentUserUseCase = getCurrentUserUseCase,
+        _updateProfileUseCase = updateProfileUseCase,
         _tokenStorage = tokenStorage ?? TokenStorage(),
         super(AuthInitial()) {
     on<AuthStatusChecked>(_onAuthStatusChecked);
     on<SignInRequested>(_onSignInRequested);
     on<SignUpRequested>(_onSignUpRequested);
     on<PhotoUploadRequested>(_onPhotoUploadRequested);
+    on<UpdateProfileRequested>(_onUpdateProfileRequested);
     on<LogoutRequested>(_onLogoutRequested);
   }
 
@@ -97,6 +102,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           emit(AuthAuthenticated(previousState.user.copyWith(photoUrl: photoUrl)));
         } else {
           emit(AuthError('User session not found.'));
+        }
+      },
+    );
+  }
+
+  Future<void> _onUpdateProfileRequested(UpdateProfileRequested event, Emitter<AuthState> emit) async {
+    final previousState = state;
+    emit(AuthLoading());
+
+    final result = await _updateProfileUseCase(
+      userId: event.userId,
+      fullName: event.fullName,
+      email: event.email,
+    );
+
+    result.fold(
+      (failure) => emit(AuthError(_mapFailureToMessage(failure))),
+      (updatedUser) {
+        if (previousState is AuthAuthenticated) {
+          emit(AuthAuthenticated(updatedUser));
+        } else {
+          emit(AuthAuthenticated(updatedUser));
         }
       },
     );

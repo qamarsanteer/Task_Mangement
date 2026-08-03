@@ -1,6 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failure.dart';
-import '../entities/user_entity.dart';
+import '../../domain/entities/user_entity.dart';
 
 abstract class AuthRepository {
   Future<Either<Failure, UserEntity>> signIn({required String email, required String password});
@@ -15,4 +15,10 @@ abstract class AuthRepository {
   Future<Either<Failure, String>> uploadPhoto(String userId, String photoPath);
 
   Future<Either<Failure, UserEntity>> getCurrentUser();
+
+  Future<Either<Failure, UserEntity>> updateProfile({
+    required String userId,
+    required String fullName,
+    required String email,
+  });
 }

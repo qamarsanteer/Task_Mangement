@@ -41,6 +41,19 @@ class PhotoUploadRequested extends AuthEvent {
   List<Object?> get props => [userId, photoPath];
 }
 
+class UpdateProfileRequested extends AuthEvent {
+  final String userId;
+  final String fullName;
+  final String email;
+  const UpdateProfileRequested({
+    required this.userId,
+    required this.fullName,
+    required this.email,
+  });
+  @override
+  List<Object?> get props => [userId, fullName, email];
+}
+
 class LogoutRequested extends AuthEvent {
   const LogoutRequested();
 }

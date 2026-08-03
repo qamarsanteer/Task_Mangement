@@ -26,23 +26,116 @@ class TasksScreen extends StatelessWidget {
   }
 }
 
-class _TasksView extends StatelessWidget {
+class _TasksView extends StatefulWidget {
   final ProjectEntity project;
   const _TasksView({required this.project});
+
+  @override
+  State<_TasksView> createState() => _TasksViewState();
+}
+
+class _TasksViewState extends State<_TasksView> {
+  final Set<String> _selectedIds = {};
+  bool _isSelectionMode = false;
+
+  void _toggleSelection(String id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+        if (_selectedIds.isEmpty) _isSelectionMode = false;
+      } else {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  void _activateSelection(String id) {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedIds.add(id);
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedIds.clear();
+      _isSelectionMode = false;
+    });
+  }
+
+  void _selectAll(List<TaskEntity> items) {
+    setState(() {
+      _selectedIds.addAll(items.map((e) => e.id));
+    });
+  }
+
+  void _confirmDeleteSelected(BuildContext context, AppLocalizations l10n) {
+    final bloc = context.read<TaskBloc>();
+    final count = _selectedIds.length;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(l10n.deleteTaskTitle),
+        content: Text('Are you sure you want to delete $count task(s)?\n${l10n.actionCannotBeUndone}'),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              bloc.add(TasksDeleteRequested(_selectedIds.toList()));
+              Navigator.pop(dialogContext);
+              _clearSelection();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: Text(l10n.delete),
+          ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(project.name),
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () => _showComingSoon(context, l10n)),
-          IconButton(icon: const Icon(Icons.filter_list), onPressed: () => _showComingSoon(context, l10n)),
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: () => _showViewSelector(context, l10n)),
-        ],
-      ),
+      appBar: _isSelectionMode
+          ? AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: _clearSelection,
+              ),
+              title: Text('${_selectedIds.length} selected'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    final state = context.read<TaskBloc>().state;
+                    final items = state is TaskLoaded
+                        ? state.tasks
+                        : state is TaskError
+                            ? state.tasks
+                            : <TaskEntity>[];
+                    _selectAll(items);
+                  },
+                  child: const Text('Select All', style: TextStyle(color: Colors.white)),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.more_vert),
+                  onPressed: _selectedIds.isEmpty
+                      ? null
+                      : () => _confirmDeleteSelected(context, l10n),
+                ),
+              ],
+            )
+          : AppBar(
+              title: Text(widget.project.name),
+              actions: [
+                IconButton(icon: const Icon(Icons.search), onPressed: () => _showComingSoon(context, l10n)),
+                IconButton(icon: const Icon(Icons.filter_list), onPressed: () => _showComingSoon(context, l10n)),
+                IconButton(icon: const Icon(Icons.more_vert), onPressed: () => _showViewSelector(context, l10n)),
+              ],
+            ),
       body: BlocConsumer<TaskBloc, TaskState>(
         listener: (context, state) {
           if (state is TaskError) {
@@ -65,7 +158,7 @@ class _TasksView extends StatelessWidget {
               ? state.tasks
               : state is TaskError
                   ? state.tasks
-                  : <TaskEntity>[];
+                  : [];
 
           if (tasks.isEmpty) {
             return _buildEmptyState(context, l10n);
@@ -86,8 +179,6 @@ class _TasksView extends StatelessWidget {
       ),
     );
   }
-
-  // ---------- Empty state ----------
 
   Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -120,39 +211,54 @@ class _TasksView extends StatelessWidget {
     );
   }
 
-  // ---------- Task tile ----------
-
   Widget _buildTaskTile(BuildContext context, AppLocalizations l10n, TaskEntity task) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final label = TaskLabels.byId(task.labelId);
+    final isSelected = _selectedIds.contains(task.id);
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        color: isSelected
+            ? AppColors.primary.withOpacity(0.15)
+            : (isDark ? AppColors.surfaceDark : AppColors.surfaceLight),
         borderRadius: BorderRadius.circular(16),
+        border: isSelected ? Border.all(color: AppColors.primary, width: 2) : null,
         boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 8, offset: const Offset(0, 4))],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => BlocProvider.value(
-              value: context.read<TaskBloc>(),
-              child: TaskDetailScreen(task: task),
-            ),
-          ),
-        ),
+        onTap: () {
+          if (_isSelectionMode) {
+            _toggleSelection(task.id);
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BlocProvider.value(
+                  value: context.read<TaskBloc>(),
+                  child: TaskDetailScreen(task: task),
+                ),
+              ),
+            );
+          }
+        },
+        onLongPress: () => _activateSelection(task.id),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // مربع الحذف
-            IconButton(
-              icon: const Icon(Icons.check_box_outline_blank, color: AppColors.error),
-              tooltip: l10n.delete,
-              onPressed: () => _confirmDeleteTask(context, l10n, task),
-            ),
+            // checkbox أو زر الحذف الفردي
+            _isSelectionMode
+                ? Checkbox(
+                    value: isSelected,
+                    onChanged: (_) => _toggleSelection(task.id),
+                    activeColor: AppColors.primary,
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.check_box_outline_blank, color: AppColors.error),
+                    tooltip: l10n.delete,
+                    onPressed: () => _confirmDeleteTask(context, l10n, task),
+                  ),
 
             // العنوان
             Expanded(
@@ -170,22 +276,23 @@ class _TasksView extends StatelessWidget {
               ),
             ),
 
-            // الثلاث مؤشرات: Label + Priority + Due Date
-            Padding(
-              padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (label != null) _buildDot(Color(label.colorValue)),
-                  if (label != null) const SizedBox(width: 6),
-                  _buildPriorityIcon(task),
-                  if (task.dueDate != null) ...[
-                    const SizedBox(width: 6),
-                    _buildDueDateChip(task, isDark),
+            // الثلاث مؤشرات
+            if (!_isSelectionMode)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (label != null) _buildDot(Color(label.colorValue)),
+                    if (label != null) const SizedBox(width: 6),
+                    _buildPriorityIcon(task),
+                    if (task.dueDate != null) ...[
+                      const SizedBox(width: 6),
+                      _buildDueDateChip(task, isDark),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -228,8 +335,6 @@ class _TasksView extends StatelessWidget {
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
   }
-
-  // ---------- Add task tile/dialog ----------
 
   Widget _buildAddTaskTile(BuildContext context, AppLocalizations l10n) {
     return InkWell(
@@ -290,8 +395,6 @@ class _TasksView extends StatelessWidget {
                     hint: l10n.taskDescriptionHint,
                   ),
                   const SizedBox(height: 16),
-
-                  // تاريخ الاستحقاق
                   InkWell(
                     onTap: () async {
                       final picked = await showDatePicker(
@@ -307,10 +410,7 @@ class _TasksView extends StatelessWidget {
                       child: Text(selectedDate != null ? _formatFullDate(selectedDate!) : l10n.selectDueDate),
                     ),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // الأولوية
                   Row(
                     children: [
                       Expanded(
@@ -333,10 +433,7 @@ class _TasksView extends StatelessWidget {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 8),
-
-                  // Label
                   Text(l10n.labelField, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
                   Wrap(
@@ -353,10 +450,7 @@ class _TasksView extends StatelessWidget {
                       );
                     }).toList(),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // التكرار
                   DropdownButtonFormField<RepeatFrequency>(
                     value: repeatFrequency,
                     decoration: InputDecoration(labelText: l10n.repeatEveryLabel),
@@ -365,10 +459,7 @@ class _TasksView extends StatelessWidget {
                         .toList(),
                     onChanged: (value) => setState(() => repeatFrequency = value ?? RepeatFrequency.none),
                   ),
-
                   const SizedBox(height: 16),
-
-                  // المرفقات
                   OutlinedButton.icon(
                     onPressed: () async {
                       final result = await FilePicker.platform.pickFiles(allowMultiple: true);
@@ -384,12 +475,11 @@ class _TasksView extends StatelessWidget {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
             ElevatedButton(
               onPressed: () {
                 if (formKey.currentState!.validate()) {
                   bloc.add(TaskCreateRequested(
-                    projectId: project.id,
+                    projectId: widget.project.id,
                     title: titleController.text.trim(),
                     description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
                     isImportant: isImportant,
@@ -405,6 +495,7 @@ class _TasksView extends StatelessWidget {
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
               child: Text(l10n.create),
             ),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
           ],
         ),
       ),
@@ -413,39 +504,27 @@ class _TasksView extends StatelessWidget {
 
   String _labelName(AppLocalizations l10n, String id) {
     switch (id) {
-      case 'work':
-        return l10n.labelWork;
-      case 'personal':
-        return l10n.labelPersonal;
-      case 'study':
-        return l10n.labelStudy;
-      case 'health':
-        return l10n.labelHealth;
-      case 'finance':
-        return l10n.labelFinance;
-      default:
-        return l10n.labelOther;
+      case 'work': return l10n.labelWork;
+      case 'personal': return l10n.labelPersonal;
+      case 'study': return l10n.labelStudy;
+      case 'health': return l10n.labelHealth;
+      case 'finance': return l10n.labelFinance;
+      default: return l10n.labelOther;
     }
   }
 
   String _repeatLabel(AppLocalizations l10n, RepeatFrequency frequency) {
     switch (frequency) {
-      case RepeatFrequency.daily:
-        return l10n.repeatDaily;
-      case RepeatFrequency.weekly:
-        return l10n.repeatWeekly;
-      case RepeatFrequency.monthly:
-        return l10n.repeatMonthly;
-      case RepeatFrequency.none:
-        return l10n.repeatNone;
+      case RepeatFrequency.daily: return l10n.repeatDaily;
+      case RepeatFrequency.weekly: return l10n.repeatWeekly;
+      case RepeatFrequency.monthly: return l10n.repeatMonthly;
+      case RepeatFrequency.none: return l10n.repeatNone;
     }
   }
 
   String _formatFullDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
-
-  // ---------- Delete confirmation ----------
 
   void _confirmDeleteTask(BuildContext context, AppLocalizations l10n, TaskEntity task) {
     final bloc = context.read<TaskBloc>();
@@ -457,7 +536,6 @@ class _TasksView extends StatelessWidget {
         title: Text(l10n.deleteTaskTitle),
         content: Text('${l10n.deleteTaskConfirm(task.title)}\n${l10n.actionCannotBeUndone}'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
           ElevatedButton(
             onPressed: () {
               bloc.add(TaskDeleteRequested(task.id));
@@ -466,12 +544,11 @@ class _TasksView extends StatelessWidget {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             child: Text(l10n.delete),
           ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
         ],
       ),
     );
   }
-
-  // ---------- View selector ----------
 
   void _showComingSoon(BuildContext context, AppLocalizations l10n) {
     ScaffoldMessenger.of(context).showSnackBar(

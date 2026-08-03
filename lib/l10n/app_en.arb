@@ -255,5 +255,13 @@
   "labelFinance": "Finance",
   "@labelFinance": {},
   "labelOther": "Other",
-  "@labelOther": {}
+  "@labelOther": {},
+  "editProfile": "Edit Profile",
+  "@editProfile": {},
+  "editName": "Edit Name",
+  "@editName": {},
+  "editEmail": "Edit Email",
+  "@editEmail": {},
+  "save": "Save",
+  "@save": {}
 }

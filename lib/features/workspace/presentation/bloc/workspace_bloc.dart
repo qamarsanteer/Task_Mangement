@@ -22,6 +22,7 @@ class WorkspaceBloc extends Bloc<WorkspaceEvent, WorkspaceState> {
     on<WorkspacesLoadRequested>(_onWorkspacesLoadRequested);
     on<WorkspaceCreateRequested>(_onWorkspaceCreateRequested);
     on<WorkspaceDeleteRequested>(_onWorkspaceDeleteRequested);
+    on<WorkspacesDeleteRequested>(_onWorkspacesDeleteRequested);
   }
 
   Future<void> _onWorkspacesLoadRequested(WorkspacesLoadRequested event, Emitter<WorkspaceState> emit) async {
@@ -56,6 +57,29 @@ class WorkspaceBloc extends Bloc<WorkspaceEvent, WorkspaceState> {
         emit(WorkspaceLoaded(workspaces: updated));
       },
     );
+  }
+
+  Future<void> _onWorkspacesDeleteRequested(WorkspacesDeleteRequested event, Emitter<WorkspaceState> emit) async {
+    final current = _currentWorkspaces();
+    emit(WorkspaceLoaded(workspaces: current, isMutating: true));
+
+    final ids = event.workspaceIds;
+    var updated = current;
+    String? errorMessage;
+
+    for (final id in ids) {
+      final result = await _deleteWorkspaceUseCase(id);
+      result.fold(
+        (failure) => errorMessage = failure.message,
+        (_) => updated = updated.where((w) => w.id != id).toList(),
+      );
+    }
+
+    if (errorMessage != null) {
+      emit(WorkspaceError(message: errorMessage!, workspaces: updated));
+    } else {
+      emit(WorkspaceLoaded(workspaces: updated));
+    }
   }
 
   List<WorkspaceEntity> _currentWorkspaces() {

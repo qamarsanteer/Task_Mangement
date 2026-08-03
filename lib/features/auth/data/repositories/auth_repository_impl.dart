@@ -69,4 +69,24 @@ class AuthRepositoryImpl implements AuthRepository {
       return Left(UnknownFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, UserEntity>> updateProfile({
+    required String userId,
+    required String fullName,
+    required String email,
+  }) async {
+    try {
+      final user = await _remoteDataSource.updateProfile(
+        userId: userId,
+        fullName: fullName,
+        email: email,
+      );
+      return Right(user);
+    } on DioException catch (e) {
+      return Left(DioErrorMapper.map(e));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
 }

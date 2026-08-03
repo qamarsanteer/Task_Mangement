@@ -15,6 +15,12 @@ abstract class AuthRemoteDataSource {
   Future<String> uploadPhoto(String userId, String photoPath);
 
   Future<UserModel> getCurrentUser();
+
+  Future<UserModel> updateProfile({
+    required String userId,
+    required String fullName,
+    required String email,
+  });
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -63,6 +69,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<UserModel> getCurrentUser() async {
     final response = await _dioClient.get('/auth/me');
+    return UserModel.fromJson(response.data['data'] ?? response.data);
+  }
+
+  @override
+  Future<UserModel> updateProfile({
+    required String userId,
+    required String fullName,
+    required String email,
+  }) async {
+    final response = await _dioClient.put(
+      '/users/$userId',
+      data: {
+        'full_name': fullName,
+        'email': email,
+      },
+    );
     return UserModel.fromJson(response.data['data'] ?? response.data);
   }
 }

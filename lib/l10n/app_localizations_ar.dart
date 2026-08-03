@@ -379,4 +379,16 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get labelOther => 'أخرى';
+
+  @override
+  String get editProfile => 'تعديل الملف الشخصي';
+
+  @override
+  String get editName => 'تعديل الاسم';
+
+  @override
+  String get editEmail => 'تعديل البريد الإلكتروني';
+
+  @override
+  String get save => 'حفظ';
 }

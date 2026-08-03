@@ -23,28 +23,117 @@ class WorkspacesScreen extends StatelessWidget {
   }
 }
 
-class _WorkspacesView extends StatelessWidget {
+class _WorkspacesView extends StatefulWidget {
   const _WorkspacesView();
+
+  @override
+  State<_WorkspacesView> createState() => _WorkspacesViewState();
+}
+
+class _WorkspacesViewState extends State<_WorkspacesView> {
+  final Set<String> _selectedIds = {};
+  bool _isSelectionMode = false;
+
+  void _toggleSelection(String id) {
+    setState(() {
+      if (_selectedIds.contains(id)) {
+        _selectedIds.remove(id);
+        if (_selectedIds.isEmpty) _isSelectionMode = false;
+      } else {
+        _selectedIds.add(id);
+      }
+    });
+  }
+
+  void _activateSelection(String id) {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedIds.add(id);
+    });
+  }
+
+  void _clearSelection() {
+    setState(() {
+      _selectedIds.clear();
+      _isSelectionMode = false;
+    });
+  }
+
+  void _selectAll(List<WorkspaceEntity> items) {
+    setState(() {
+      _selectedIds.addAll(items.map((e) => e.id));
+    });
+  }
+
+  void _confirmDeleteSelected(BuildContext context, AppLocalizations l10n) {
+    final bloc = context.read<WorkspaceBloc>();
+    final count = _selectedIds.length;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(l10n.deleteWorkspaceTitle),
+        content: Text('Are you sure you want to delete $count workspace(s)?\n${l10n.actionCannotBeUndone}'),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              bloc.add(WorkspacesDeleteRequested(_selectedIds.toList()));
+              Navigator.pop(dialogContext);
+              _clearSelection();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: Text(l10n.delete),
+          ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    // ربط صريح بـ ThemeBloc عشان نضمن إعادة بناء الشاشة كاملة
-    // (بما فيها ListView وبطاقات الـ workspace) فوراً عند تغيير الثيم،
-    // بدل ما نعتمد بس على انتشار InheritedWidget يلي مش موثوق دايماً
-    // جوا IndexedStack.
     return BlocBuilder<ThemeBloc, ThemeState>(
       builder: (context, themeState) {
         return Scaffold(
-          appBar: AppBar(
-            title: Text(l10n.workspacesTitle),
-            actions: [
-              IconButton(icon: const Icon(Icons.search), onPressed: () => _showComingSoon(context, l10n)),
-              IconButton(icon: const Icon(Icons.filter_list), onPressed: () => _showComingSoon(context, l10n)),
-              IconButton(icon: const Icon(Icons.more_vert), onPressed: () => _showComingSoon(context, l10n)),
-            ],
-          ),
+          appBar: _isSelectionMode
+              ? AppBar(
+                  leading: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: _clearSelection,
+                  ),
+                  title: Text('${_selectedIds.length} selected'),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        final state = context.read<WorkspaceBloc>().state;
+                        final items = state is WorkspaceLoaded
+                            ? state.workspaces
+                            : state is WorkspaceError
+                                ? state.workspaces
+                                : <WorkspaceEntity>[];
+                        _selectAll(items);
+                      },
+                      child: const Text('Select All', style: TextStyle(color: Colors.white)),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.more_vert),
+                      onPressed: _selectedIds.isEmpty
+                          ? null
+                          : () => _confirmDeleteSelected(context, l10n),
+                    ),
+                  ],
+                )
+              : AppBar(
+                  title: Text(l10n.workspacesTitle),
+                  actions: [
+                    IconButton(icon: const Icon(Icons.search), onPressed: () => _showComingSoon(context, l10n)),
+                    IconButton(icon: const Icon(Icons.filter_list), onPressed: () => _showComingSoon(context, l10n)),
+                    IconButton(icon: const Icon(Icons.more_vert), onPressed: () => _showComingSoon(context, l10n)),
+                  ],
+                ),
           body: BlocConsumer<WorkspaceBloc, WorkspaceState>(
             listener: (context, state) {
               if (state is WorkspaceError) {
@@ -67,7 +156,7 @@ class _WorkspacesView extends StatelessWidget {
                   ? state.workspaces
                   : state is WorkspaceError
                       ? state.workspaces
-                      : <WorkspaceEntity>[];
+                      : [];
 
               if (workspaces.isEmpty) {
                 return _buildEmptyState(context, l10n, themeState.isDarkMode);
@@ -129,19 +218,30 @@ class _WorkspacesView extends StatelessWidget {
   }
 
   Widget _buildWorkspaceTile(BuildContext context, AppLocalizations l10n, WorkspaceEntity workspace, bool isDark) {
+    final isSelected = _selectedIds.contains(workspace.id);
+
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        color: isSelected
+            ? AppColors.primary.withOpacity(0.15)
+            : (isDark ? AppColors.surfaceDark : AppColors.surfaceLight),
         borderRadius: BorderRadius.circular(16),
+        border: isSelected ? Border.all(color: AppColors.primary, width: 2) : null,
         boxShadow: [BoxShadow(color: AppColors.shadow, blurRadius: 8, offset: const Offset(0, 4))],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: IconButton(
-          icon: const Icon(Icons.check_box_outline_blank, color: AppColors.error),
-          tooltip: l10n.delete,
-          onPressed: () => _confirmDeleteWorkspace(context, l10n, workspace),
-        ),
+        leading: _isSelectionMode
+            ? Checkbox(
+                value: isSelected,
+                onChanged: (_) => _toggleSelection(workspace.id),
+                activeColor: AppColors.primary,
+              )
+            : IconButton(
+                icon: const Icon(Icons.check_box_outline_blank, color: AppColors.error),
+                tooltip: l10n.delete,
+                onPressed: () => _confirmDeleteWorkspace(context, l10n, workspace),
+              ),
         title: Text(
           workspace.name,
           style: TextStyle(
@@ -150,11 +250,20 @@ class _WorkspacesView extends StatelessWidget {
             color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
           ),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) =>ProjectsScreen(workspace: workspace)),
-        ),
+        trailing: _isSelectionMode
+            ? null
+            : const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: () {
+          if (_isSelectionMode) {
+            _toggleSelection(workspace.id);
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ProjectsScreen(workspace: workspace)),
+            );
+          }
+        },
+        onLongPress: () => _activateSelection(workspace.id),
       ),
     );
   }
@@ -211,7 +320,6 @@ class _WorkspacesView extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
           ElevatedButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
@@ -222,6 +330,7 @@ class _WorkspacesView extends StatelessWidget {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
             child: Text(l10n.create),
           ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
         ],
       ),
     );
@@ -237,7 +346,6 @@ class _WorkspacesView extends StatelessWidget {
         title: Text(l10n.deleteWorkspaceTitle),
         content: Text('${l10n.deleteWorkspaceConfirm(workspace.name)}\n${l10n.actionCannotBeUndone}'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
           ElevatedButton(
             onPressed: () {
               bloc.add(WorkspaceDeleteRequested(workspace.id));
@@ -246,6 +354,7 @@ class _WorkspacesView extends StatelessWidget {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             child: Text(l10n.delete),
           ),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
         ],
       ),
     );

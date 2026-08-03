@@ -380,4 +380,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get labelOther => 'Other';
+
+  @override
+  String get editProfile => 'Edit Profile';
+
+  @override
+  String get editName => 'Edit Name';
+
+  @override
+  String get editEmail => 'Edit Email';
+
+  @override
+  String get save => 'Save';
 }

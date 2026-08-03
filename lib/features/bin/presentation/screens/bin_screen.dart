@@ -89,12 +89,14 @@ class _BinScreenState extends State<BinScreen> {
       title: Text(l10n.deleteForever),
       content: Text(l10n.actionCannotBeUndone),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
+        // ✅ Confirm (Delete Forever) أول
         ElevatedButton(
           onPressed: () { setState(() => _deletedTasks.removeWhere((t) => t['id'] == task['id'])); Navigator.pop(context); },
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
           child: Text(l10n.delete),
         ),
+        // ✅ Cancel تاني
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
       ],
     ));
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../core/widgets/custom_button.dart';
+import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../core/widgets/image_source_picker.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
@@ -116,9 +117,29 @@ class ProfileScreen extends StatelessWidget {
                     ),
                     child: Column(
                       children: [
-                        _buildInfoRow(context, Icons.person_outline, l10n.fullName, user?.fullName ?? '-'),
+                        // الاسم — بس أيقونة القلم بتفتح التعديل
+                        _buildInfoRow(
+                          context: context,
+                          l10n: l10n,
+                          icon: Icons.person_outline,
+                          label: l10n.fullName,
+                          value: user?.fullName ?? '-',
+                          onEdit: user != null
+                              ? () => _showEditNameDialog(context, l10n, user.id, user.fullName, user.email)
+                              : null,
+                        ),
                         const Divider(height: 32),
-                        _buildInfoRow(context, Icons.email_outlined, l10n.email, user?.email ?? '-'),
+                        // الإيميل — بس أيقونة القلم بتفتح التعديل
+                        _buildInfoRow(
+                          context: context,
+                          l10n: l10n,
+                          icon: Icons.email_outlined,
+                          label: l10n.email,
+                          value: user?.email ?? '-',
+                          onEdit: user != null
+                              ? () => _showEditEmailDialog(context, l10n, user.id, user.fullName, user.email)
+                              : null,
+                        ),
                       ],
                     ),
                   ),
@@ -154,9 +175,120 @@ class ProfileScreen extends StatelessWidget {
     final pickedFile = await showImageSourcePicker(context);
     if (pickedFile != null && context.mounted) {
       context.read<AuthBloc>().add(
-            PhotoUploadRequested(userId: userId, photoPath: pickedFile.path),
-          );
+        PhotoUploadRequested(userId: userId, photoPath: pickedFile.path),
+      );
     }
+  }
+
+  // ─── Dialog تعديل الاسم لحال ───
+  void _showEditNameDialog(
+    BuildContext context,
+    AppLocalizations l10n,
+    String userId,
+    String currentName,
+    String currentEmail,
+  ) {
+    final nameController = TextEditingController(text: currentName);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(l10n.editName),
+        content: Form(
+          key: formKey,
+          child: CustomTextField(
+            controller: nameController,
+            label: l10n.fullName,
+            hint: l10n.enterFullName,
+            prefixIcon: const Icon(Icons.person_outline),
+            autofocus: true,
+            validator: (value) => value == null || value.trim().isEmpty ? l10n.requiredField : null,
+          ),
+        ),
+        actions: [
+          // ✅ Confirm (Save) أول
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                context.read<AuthBloc>().add(UpdateProfileRequested(
+                  userId: userId,
+                  fullName: nameController.text.trim(),
+                  email: currentEmail,
+                ));
+                Navigator.pop(dialogContext);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            child: Text(l10n.save),
+          ),
+          // ✅ Cancel تاني
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l10n.cancel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Dialog تعديل الإيميل لحال ───
+  void _showEditEmailDialog(
+    BuildContext context,
+    AppLocalizations l10n,
+    String userId,
+    String currentName,
+    String currentEmail,
+  ) {
+    final emailController = TextEditingController(text: currentEmail);
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(l10n.editEmail),
+        content: Form(
+          key: formKey,
+          child: CustomTextField(
+            controller: emailController,
+            label: l10n.email,
+            hint: l10n.enterEmail,
+            keyboardType: TextInputType.emailAddress,
+            prefixIcon: const Icon(Icons.email_outlined),
+            autofocus: true,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) return l10n.requiredField;
+              if (!value.contains('@')) return l10n.invalidEmail;
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          // ✅ Confirm (Save) أول
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                context.read<AuthBloc>().add(UpdateProfileRequested(
+                  userId: userId,
+                  fullName: currentName,
+                  email: emailController.text.trim(),
+                ));
+                Navigator.pop(dialogContext);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            child: Text(l10n.save),
+          ),
+          // ✅ Cancel تاني
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(l10n.cancel),
+          ),
+        ],
+      ),
+    );
   }
 
   void _confirmLogout(BuildContext context, AppLocalizations l10n) {
@@ -167,10 +299,7 @@ class ProfileScreen extends StatelessWidget {
         title: Text(l10n.logOutTitle),
         content: Text(l10n.areYouSureLogout),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.cancel),
-          ),
+          // ✅ Confirm (Log Out) أول
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
@@ -179,12 +308,24 @@ class ProfileScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             child: Text(l10n.logout),
           ),
+          // ✅ Cancel تاني
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l10n.cancel),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(BuildContext context, IconData icon, String label, String value) {
+  Widget _buildInfoRow({
+    required BuildContext context,
+    required AppLocalizations l10n,
+    required IconData icon,
+    required String label,
+    required String value,
+    VoidCallback? onEdit,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
@@ -216,6 +357,17 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
         ),
+        // ✅ أيقونة القلم فقط هي اللي بتفتح التعديل
+        if (onEdit != null)
+          IconButton(
+            icon: Icon(
+              Icons.edit,
+              size: 20,
+              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+            ),
+            onPressed: onEdit,
+            tooltip: l10n.editProfile,
+          ),
       ],
     );
   }

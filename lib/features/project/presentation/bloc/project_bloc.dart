@@ -22,6 +22,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     on<ProjectsLoadRequested>(_onProjectsLoadRequested);
     on<ProjectCreateRequested>(_onProjectCreateRequested);
     on<ProjectDeleteRequested>(_onProjectDeleteRequested);
+    on<ProjectsDeleteRequested>(_onProjectsDeleteRequested);
   }
 
   Future<void> _onProjectsLoadRequested(ProjectsLoadRequested event, Emitter<ProjectState> emit) async {
@@ -56,6 +57,29 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         emit(ProjectLoaded(projects: updated));
       },
     );
+  }
+
+  Future<void> _onProjectsDeleteRequested(ProjectsDeleteRequested event, Emitter<ProjectState> emit) async {
+    final current = _currentProjects();
+    emit(ProjectLoaded(projects: current, isMutating: true));
+
+    final ids = event.projectIds;
+    var updated = current;
+    String? errorMessage;
+
+    for (final id in ids) {
+      final result = await _deleteProjectUseCase(id);
+      result.fold(
+        (failure) => errorMessage = failure.message,
+        (_) => updated = updated.where((p) => p.id != id).toList(),
+      );
+    }
+
+    if (errorMessage != null) {
+      emit(ProjectError(message: errorMessage!, projects: updated));
+    } else {
+      emit(ProjectLoaded(projects: updated));
+    }
   }
 
   List<ProjectEntity> _currentProjects() {

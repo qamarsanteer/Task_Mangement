@@ -31,6 +31,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<TaskCreateRequested>(_onTaskCreateRequested);
     on<TaskStatusChangeRequested>(_onTaskStatusChangeRequested);
     on<TaskDeleteRequested>(_onTaskDeleteRequested);
+    on<TasksDeleteRequested>(_onTasksDeleteRequested);
   }
 
   Future<void> _onTasksLoadRequested(TasksLoadRequested event, Emitter<TaskState> emit) async {
@@ -72,7 +73,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
 
         uploadResult.fold(
           (failure) {
-            // المهمة اتعملت لكن رفع المرفقات فشل — نضيف المهمة بدون مرفقات ونعرض تحذير
             emit(TaskError(message: failure.message, tasks: [...current, newTask]));
           },
           (urls) {
@@ -110,6 +110,29 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         emit(TaskLoaded(tasks: updated));
       },
     );
+  }
+
+  Future<void> _onTasksDeleteRequested(TasksDeleteRequested event, Emitter<TaskState> emit) async {
+    final current = _currentTasks();
+    emit(TaskLoaded(tasks: current, isMutating: true));
+
+    final ids = event.taskIds;
+    var updated = current;
+    String? errorMessage;
+
+    for (final id in ids) {
+      final result = await _deleteTaskUseCase(id);
+      result.fold(
+        (failure) => errorMessage = failure.message,
+        (_) => updated = updated.where((t) => t.id != id).toList(),
+      );
+    }
+
+    if (errorMessage != null) {
+      emit(TaskError(message: errorMessage!, tasks: updated));
+    } else {
+      emit(TaskLoaded(tasks: updated));
+    }
   }
 
   List<TaskEntity> _currentTasks() {

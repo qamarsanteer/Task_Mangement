@@ -56,3 +56,10 @@ class TaskDeleteRequested extends TaskEvent {
   @override
   List<Object?> get props => [taskId];
 }
+
+class TasksDeleteRequested extends TaskEvent {
+  final List<String> taskIds;
+  const TasksDeleteRequested(this.taskIds);
+  @override
+  List<Object?> get props => [taskIds];
+}

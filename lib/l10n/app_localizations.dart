@@ -823,6 +823,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other'**
   String get labelOther;
+
+  /// No description provided for @editProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Profile'**
+  String get editProfile;
+
+  /// No description provided for @editName.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Name'**
+  String get editName;
+
+  /// No description provided for @editEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Email'**
+  String get editEmail;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
 }
 
 class _AppLocalizationsDelegate

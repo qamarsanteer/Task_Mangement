@@ -47,4 +47,19 @@ class AuthMockDataSource implements AuthRemoteDataSource {
       token: 'mock_token_12345',
     );
   }
+
+  @override
+  Future<UserModel> updateProfile({
+    required String userId,
+    required String fullName,
+    required String email,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 800));
+    return UserModel(
+      id: userId,
+      fullName: fullName,
+      email: email,
+      token: 'mock_token_12345',
+    );
+  }
 }

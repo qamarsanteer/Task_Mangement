@@ -27,3 +27,10 @@ class ProjectDeleteRequested extends ProjectEvent {
   @override
   List<Object?> get props => [projectId];
 }
+
+class ProjectsDeleteRequested extends ProjectEvent {
+  final List<String> projectIds;
+  const ProjectsDeleteRequested(this.projectIds);
+  @override
+  List<Object?> get props => [projectIds];
+}

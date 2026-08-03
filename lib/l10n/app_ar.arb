@@ -255,5 +255,13 @@
   "labelFinance": "مالية",
   "@labelFinance": {},
   "labelOther": "أخرى",
-  "@labelOther": {}
+  "@labelOther": {},
+  "editProfile": "تعديل الملف الشخصي",
+  "@editProfile": {},
+  "editName": "تعديل الاسم",
+  "@editName": {},
+  "editEmail": "تعديل البريد الإلكتروني",
+  "@editEmail": {},
+  "save": "حفظ",
+  "@save": {}
 }
