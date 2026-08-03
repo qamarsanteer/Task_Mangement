@@ -9,7 +9,7 @@ import '../../domain/entities/project_entity.dart';
 import '../bloc/project_bloc.dart';
 import '../bloc/project_event.dart';
 import '../bloc/project_state.dart';
-import 'project_detail_screen.dart';
+import '../../../task/presentation/screens/tasks_screen.dart';
 
 class ProjectsScreen extends StatelessWidget {
   final WorkspaceEntity workspace;
@@ -150,7 +150,7 @@ class _ProjectsView extends StatelessWidget {
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ProjectDetailScreen(project: project)),
+          MaterialPageRoute(builder: (_) => TasksScreen(project: project)),
         ),
       ),
     );

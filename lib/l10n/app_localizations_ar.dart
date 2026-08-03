@@ -129,7 +129,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get addPhotoTitle => 'إضافة صورة';
 
   @override
-  String get addPhotoSubtitle => 'أضف صورة ملفك الشخصي حتى يتمكن فريقك من التعرف عليك.';
+  String get addPhotoSubtitle =>
+      'أضف صورة ملفك الشخصي حتى يتمكن فريقك من التعرف عليك.';
 
   @override
   String get continueText => 'متابعة';
@@ -253,4 +254,129 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noProjectsSubtitle => 'أنشئ أول مشروع للبدء';
+
+  @override
+  String get addTask => 'إضافة مهمة';
+
+  @override
+  String get taskTitleLabel => 'عنوان المهمة';
+
+  @override
+  String get taskTitleHint => 'أدخل عنوان المهمة';
+
+  @override
+  String get taskDescriptionLabel => 'الوصف (اختياري)';
+
+  @override
+  String get taskDescriptionHint => 'أضف تفاصيل إضافية';
+
+  @override
+  String get dueDateLabel => 'تاريخ الاستحقاق';
+
+  @override
+  String get selectDueDate => 'اختر التاريخ';
+
+  @override
+  String get important => 'مهم';
+
+  @override
+  String get urgent => 'مستعجل';
+
+  @override
+  String get deleteTaskTitle => 'حذف مهمة';
+
+  @override
+  String deleteTaskConfirm(Object title) {
+    return 'هل أنت متأكد أنك تريد حذف \"$title\"؟';
+  }
+
+  @override
+  String get noTasks => 'لا توجد مهام بعد';
+
+  @override
+  String get noTasksSubtitle => 'أضف أول مهمة للبدء';
+
+  @override
+  String get overdue => 'متأخرة';
+
+  @override
+  String get taskStatusNotStarted => 'لم تبدأ';
+
+  @override
+  String get taskStatusInProgress => 'قيد التنفيذ';
+
+  @override
+  String get taskStatusCompleted => 'مكتملة';
+
+  @override
+  String get changeStatus => 'تغيير الحالة';
+
+  @override
+  String get selectView => 'اختر طريقة العرض';
+
+  @override
+  String get viewList => 'قائمة';
+
+  @override
+  String get viewBoard => 'لوحة';
+
+  @override
+  String get viewTimeline => 'الجدول الزمني';
+
+  @override
+  String get viewCalendar => 'التقويم';
+
+  @override
+  String get taskDetails => 'تفاصيل المهمة';
+
+  @override
+  String get status => 'الحالة';
+
+  @override
+  String get priorityLabel => 'الأولوية';
+
+  @override
+  String get labelField => 'التصنيف';
+
+  @override
+  String get addDateLabel => 'تاريخ الإضافة';
+
+  @override
+  String get attachmentsLabel => 'المرفقات';
+
+  @override
+  String get filesSelected => 'ملفات محددة';
+
+  @override
+  String get repeatEveryLabel => 'التكرار';
+
+  @override
+  String get repeatNone => 'بدون تكرار';
+
+  @override
+  String get repeatDaily => 'يومياً';
+
+  @override
+  String get repeatWeekly => 'أسبوعياً';
+
+  @override
+  String get repeatMonthly => 'شهرياً';
+
+  @override
+  String get labelWork => 'عمل';
+
+  @override
+  String get labelPersonal => 'شخصي';
+
+  @override
+  String get labelStudy => 'دراسة';
+
+  @override
+  String get labelHealth => 'صحة';
+
+  @override
+  String get labelFinance => 'مالية';
+
+  @override
+  String get labelOther => 'أخرى';
 }

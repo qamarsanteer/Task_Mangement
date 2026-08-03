@@ -1,0 +1,121 @@
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../domain/entities/task_entity.dart';
+import '../../domain/usecases/create_task_usecase.dart';
+import '../../domain/usecases/delete_task_usecase.dart';
+import '../../domain/usecases/get_tasks_usecase.dart';
+import '../../domain/usecases/update_task_status_usecase.dart';
+import '../../domain/usecases/upload_task_attachments_usecase.dart';
+import 'task_event.dart';
+import 'task_state.dart';
+
+class TaskBloc extends Bloc<TaskEvent, TaskState> {
+  final GetTasksUseCase _getTasksUseCase;
+  final CreateTaskUseCase _createTaskUseCase;
+  final UpdateTaskStatusUseCase _updateTaskStatusUseCase;
+  final UploadTaskAttachmentsUseCase _uploadTaskAttachmentsUseCase;
+  final DeleteTaskUseCase _deleteTaskUseCase;
+
+  TaskBloc({
+    required GetTasksUseCase getTasksUseCase,
+    required CreateTaskUseCase createTaskUseCase,
+    required UpdateTaskStatusUseCase updateTaskStatusUseCase,
+    required UploadTaskAttachmentsUseCase uploadTaskAttachmentsUseCase,
+    required DeleteTaskUseCase deleteTaskUseCase,
+  })  : _getTasksUseCase = getTasksUseCase,
+        _createTaskUseCase = createTaskUseCase,
+        _updateTaskStatusUseCase = updateTaskStatusUseCase,
+        _uploadTaskAttachmentsUseCase = uploadTaskAttachmentsUseCase,
+        _deleteTaskUseCase = deleteTaskUseCase,
+        super(TaskInitial()) {
+    on<TasksLoadRequested>(_onTasksLoadRequested);
+    on<TaskCreateRequested>(_onTaskCreateRequested);
+    on<TaskStatusChangeRequested>(_onTaskStatusChangeRequested);
+    on<TaskDeleteRequested>(_onTaskDeleteRequested);
+  }
+
+  Future<void> _onTasksLoadRequested(TasksLoadRequested event, Emitter<TaskState> emit) async {
+    emit(TaskLoading());
+    final result = await _getTasksUseCase(event.projectId);
+    result.fold(
+      (failure) => emit(TaskError(message: failure.message, tasks: const [])),
+      (tasks) => emit(TaskLoaded(tasks: tasks)),
+    );
+  }
+
+  Future<void> _onTaskCreateRequested(TaskCreateRequested event, Emitter<TaskState> emit) async {
+    final current = _currentTasks();
+    emit(TaskLoaded(tasks: current, isMutating: true));
+
+    final createResult = await _createTaskUseCase(
+      projectId: event.projectId,
+      title: event.title,
+      description: event.description,
+      isImportant: event.isImportant,
+      isUrgent: event.isUrgent,
+      dueDate: event.dueDate,
+      labelId: event.labelId,
+      repeatFrequency: event.repeatFrequency,
+    );
+
+    await createResult.fold(
+      (failure) async => emit(TaskError(message: failure.message, tasks: current)),
+      (newTask) async {
+        if (event.attachmentPaths.isEmpty) {
+          emit(TaskLoaded(tasks: [...current, newTask]));
+          return;
+        }
+
+        final uploadResult = await _uploadTaskAttachmentsUseCase(
+          taskId: newTask.id,
+          filePaths: event.attachmentPaths,
+        );
+
+        uploadResult.fold(
+          (failure) {
+            // المهمة اتعملت لكن رفع المرفقات فشل — نضيف المهمة بدون مرفقات ونعرض تحذير
+            emit(TaskError(message: failure.message, tasks: [...current, newTask]));
+          },
+          (urls) {
+            final taskWithAttachments = newTask.copyWith(attachmentUrls: urls);
+            emit(TaskLoaded(tasks: [...current, taskWithAttachments]));
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _onTaskStatusChangeRequested(TaskStatusChangeRequested event, Emitter<TaskState> emit) async {
+    final current = _currentTasks();
+    emit(TaskLoaded(tasks: current, isMutating: true));
+
+    final result = await _updateTaskStatusUseCase(taskId: event.taskId, status: event.status);
+    result.fold(
+      (failure) => emit(TaskError(message: failure.message, tasks: current)),
+      (updatedTask) {
+        final updatedList = current.map((t) => t.id == updatedTask.id ? updatedTask : t).toList();
+        emit(TaskLoaded(tasks: updatedList));
+      },
+    );
+  }
+
+  Future<void> _onTaskDeleteRequested(TaskDeleteRequested event, Emitter<TaskState> emit) async {
+    final current = _currentTasks();
+    emit(TaskLoaded(tasks: current, isMutating: true));
+
+    final result = await _deleteTaskUseCase(event.taskId);
+    result.fold(
+      (failure) => emit(TaskError(message: failure.message, tasks: current)),
+      (_) {
+        final updated = current.where((t) => t.id != event.taskId).toList();
+        emit(TaskLoaded(tasks: updated));
+      },
+    );
+  }
+
+  List<TaskEntity> _currentTasks() {
+    final currentState = state;
+    if (currentState is TaskLoaded) return currentState.tasks;
+    if (currentState is TaskError) return currentState.tasks;
+    return [];
+  }
+}

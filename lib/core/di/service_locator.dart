@@ -35,6 +35,17 @@ import '../../features/project/domain/usecases/delete_project_usecase.dart';
 import '../../features/project/domain/usecases/get_projects_usecase.dart';
 import '../../features/project/presentation/bloc/project_bloc.dart';
 
+import '../../features/task/data/datasources/task_remote_data_source.dart';
+import '../../features/task/data/datasources/task_mock_data_source.dart';
+import '../../features/task/data/repositories/task_repository_impl.dart';
+import '../../features/task/domain/repositories/task_repository.dart';
+import '../../features/task/domain/usecases/create_task_usecase.dart';
+import '../../features/task/domain/usecases/delete_task_usecase.dart';
+import '../../features/task/domain/usecases/get_tasks_usecase.dart';
+import '../../features/task/domain/usecases/update_task_status_usecase.dart';
+import '../../features/task/presentation/bloc/task_bloc.dart';
+import '../../features/task/domain/usecases/upload_task_attachments_usecase.dart';
+
 final getIt = GetIt.instance;
 
 /// غيّر هاد المتغير لـ false لما يجهز السيرفر الحقيقي
@@ -132,6 +143,36 @@ Future<void> setupServiceLocator() async {
       getProjectsUseCase: getIt(),
       createProjectUseCase: getIt(),
       deleteProjectUseCase: getIt(),
+    ),
+  );
+
+  // ---------- Task: Data sources ----------
+  getIt.registerLazySingleton<TaskRemoteDataSource>(
+    () => _useMockData
+        ? TaskMockDataSource()
+        : TaskRemoteDataSourceImpl(dioClient: getIt()),
+  );
+
+  // ---------- Task: Repository ----------
+  getIt.registerLazySingleton<TaskRepository>(
+    () => TaskRepositoryImpl(remoteDataSource: getIt()),
+  );
+
+  // ---------- Task: Use cases ----------
+  getIt.registerLazySingleton(() => GetTasksUseCase(getIt()));
+  getIt.registerLazySingleton(() => CreateTaskUseCase(getIt()));
+  getIt.registerLazySingleton(() => UpdateTaskStatusUseCase(getIt()));
+  getIt.registerLazySingleton(() => DeleteTaskUseCase(getIt()));
+  getIt.registerLazySingleton(() => UploadTaskAttachmentsUseCase(getIt()));
+
+  // ---------- Task: Bloc ----------
+  getIt.registerFactory(
+    () => TaskBloc(
+      getTasksUseCase: getIt(),
+      createTaskUseCase: getIt(),
+      updateTaskStatusUseCase: getIt(),
+      uploadTaskAttachmentsUseCase: getIt(), 
+      deleteTaskUseCase: getIt(),
     ),
   );
 }

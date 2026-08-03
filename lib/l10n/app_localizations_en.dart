@@ -129,7 +129,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPhotoTitle => 'Add a Photo';
 
   @override
-  String get addPhotoSubtitle => 'Add a profile photo so your team can recognize you.';
+  String get addPhotoSubtitle =>
+      'Add a profile photo so your team can recognize you.';
 
   @override
   String get continueText => 'Continue';
@@ -223,7 +224,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noWorkspaces => 'No workspaces yet';
 
   @override
-  String get noWorkspacesSubtitle => 'Create your first workspace to get started';
+  String get noWorkspacesSubtitle =>
+      'Create your first workspace to get started';
 
   @override
   String get comingSoon => 'Coming soon';
@@ -253,4 +255,129 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noProjectsSubtitle => 'Create your first project to get started';
+
+  @override
+  String get addTask => 'Add Task';
+
+  @override
+  String get taskTitleLabel => 'Task Title';
+
+  @override
+  String get taskTitleHint => 'Enter task title';
+
+  @override
+  String get taskDescriptionLabel => 'Description (optional)';
+
+  @override
+  String get taskDescriptionHint => 'Add more details';
+
+  @override
+  String get dueDateLabel => 'Due Date';
+
+  @override
+  String get selectDueDate => 'Select date';
+
+  @override
+  String get important => 'Important';
+
+  @override
+  String get urgent => 'Urgent';
+
+  @override
+  String get deleteTaskTitle => 'Delete Task';
+
+  @override
+  String deleteTaskConfirm(Object title) {
+    return 'Are you sure you want to delete \"$title\"?';
+  }
+
+  @override
+  String get noTasks => 'No tasks yet';
+
+  @override
+  String get noTasksSubtitle => 'Add your first task to get started';
+
+  @override
+  String get overdue => 'Overdue';
+
+  @override
+  String get taskStatusNotStarted => 'Not Started';
+
+  @override
+  String get taskStatusInProgress => 'In Progress';
+
+  @override
+  String get taskStatusCompleted => 'Completed';
+
+  @override
+  String get changeStatus => 'Change Status';
+
+  @override
+  String get selectView => 'Select View';
+
+  @override
+  String get viewList => 'List';
+
+  @override
+  String get viewBoard => 'Board';
+
+  @override
+  String get viewTimeline => 'Timeline';
+
+  @override
+  String get viewCalendar => 'Calendar';
+
+  @override
+  String get taskDetails => 'Task Details';
+
+  @override
+  String get status => 'Status';
+
+  @override
+  String get priorityLabel => 'Priority';
+
+  @override
+  String get labelField => 'Label';
+
+  @override
+  String get addDateLabel => 'Added on';
+
+  @override
+  String get attachmentsLabel => 'Attachments';
+
+  @override
+  String get filesSelected => 'files selected';
+
+  @override
+  String get repeatEveryLabel => 'Repeat Every';
+
+  @override
+  String get repeatNone => 'Never';
+
+  @override
+  String get repeatDaily => 'Daily';
+
+  @override
+  String get repeatWeekly => 'Weekly';
+
+  @override
+  String get repeatMonthly => 'Monthly';
+
+  @override
+  String get labelWork => 'Work';
+
+  @override
+  String get labelPersonal => 'Personal';
+
+  @override
+  String get labelStudy => 'Study';
+
+  @override
+  String get labelHealth => 'Health';
+
+  @override
+  String get labelFinance => 'Finance';
+
+  @override
+  String get labelOther => 'Other';
 }
