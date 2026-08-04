@@ -2,6 +2,10 @@ import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../network/dio_client.dart';
+import '../network/connectivity_service.dart';
+import '../cache/local_cache_service.dart';
+import '../sync/sync_manager.dart';
+import '../sync/syncable.dart';
 import '../storage/token_storage.dart';
 import '../storage/app_preferences.dart';
 import '../bloc/theme/theme_bloc.dart';
@@ -61,6 +65,8 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton(() => DioClient());
   getIt.registerLazySingleton(() => TokenStorage());
   getIt.registerLazySingleton(() => AppPreferences(getIt()));
+  getIt.registerLazySingleton(() => ConnectivityService());
+  getIt.registerLazySingleton(() => LocalCacheService(getIt()));
 
   // ---------- Core Blocs (theme / locale) ----------
   getIt.registerFactory(() => ThemeBloc(appPreferences: getIt()));
@@ -69,14 +75,17 @@ Future<void> setupServiceLocator() async {
   // ---------- Auth: Data sources ----------
   getIt.registerLazySingleton<AuthRemoteDataSource>(
     () => _useMockData
-        ? AuthMockDataSource()
+        ? AuthMockDataSource(prefs: getIt())
         : AuthRemoteDataSourceImpl(dioClient: getIt()),
   );
 
   // ---------- Auth: Repository ----------
-  getIt.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(remoteDataSource: getIt()),
+  final authRepository = AuthRepositoryImpl(
+    remoteDataSource: getIt(),
+    cache: getIt(),
+    connectivityService: getIt(),
   );
+  getIt.registerLazySingleton<AuthRepository>(() => authRepository);
 
   // ---------- Auth: Use cases ----------
   getIt.registerLazySingleton(() => LoginUseCase(getIt()));
@@ -105,9 +114,12 @@ Future<void> setupServiceLocator() async {
   );
 
   // ---------- Workspace: Repository ----------
-  getIt.registerLazySingleton<WorkspaceRepository>(
-    () => WorkspaceRepositoryImpl(remoteDataSource: getIt()),
+  final workspaceRepository = WorkspaceRepositoryImpl(
+    remoteDataSource: getIt(),
+    cache: getIt(),
+    connectivityService: getIt(),
   );
+  getIt.registerLazySingleton<WorkspaceRepository>(() => workspaceRepository);
 
   // ---------- Workspace: Use cases ----------
   getIt.registerLazySingleton(() => GetWorkspacesUseCase(getIt()));
@@ -131,9 +143,12 @@ Future<void> setupServiceLocator() async {
   );
 
   // ---------- Project: Repository ----------
-  getIt.registerLazySingleton<ProjectRepository>(
-    () => ProjectRepositoryImpl(remoteDataSource: getIt()),
+  final projectRepository = ProjectRepositoryImpl(
+    remoteDataSource: getIt(),
+    cache: getIt(),
+    connectivityService: getIt(),
   );
+  getIt.registerLazySingleton<ProjectRepository>(() => projectRepository);
 
   // ---------- Project: Use cases ----------
   getIt.registerLazySingleton(() => GetProjectsUseCase(getIt()));
@@ -157,9 +172,12 @@ Future<void> setupServiceLocator() async {
   );
 
   // ---------- Task: Repository ----------
-  getIt.registerLazySingleton<TaskRepository>(
-    () => TaskRepositoryImpl(remoteDataSource: getIt()),
+  final taskRepository = TaskRepositoryImpl(
+    remoteDataSource: getIt(),
+    cache: getIt(),
+    connectivityService: getIt(),
   );
+  getIt.registerLazySingleton<TaskRepository>(() => taskRepository);
 
   // ---------- Task: Use cases ----------
   getIt.registerLazySingleton(() => GetTasksUseCase(getIt()));
@@ -177,5 +195,18 @@ Future<void> setupServiceLocator() async {
       uploadTaskAttachmentsUseCase: getIt(),
       deleteTaskUseCase: getIt(),
     ),
+  );
+
+  // ---------- Sync ----------
+  // كل Repository بيطبّق Syncable لازم ينضاف هون حتى يتزامن تلقائياً
+  // لحظة رجوع الاتصال بالإنترنت.
+  final syncables = <Syncable>[
+    authRepository,
+    workspaceRepository,
+    projectRepository,
+    taskRepository,
+  ];
+  getIt.registerLazySingleton(
+    () => SyncManager(connectivityService: getIt(), syncables: syncables),
   );
 }

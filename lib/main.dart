@@ -8,12 +8,14 @@ import 'core/bloc/theme/theme_state.dart';
 import 'core/bloc/locale/locale_bloc.dart';
 import 'core/bloc/locale/locale_state.dart';
 import 'core/di/service_locator.dart';
+import 'core/sync/sync_manager.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await setupServiceLocator();
+  getIt<SyncManager>().start();
 
   runApp(
     MultiBlocProvider(

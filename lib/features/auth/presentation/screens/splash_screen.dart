@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/colors.dart';
+import '../../../../core/widgets/masar_logo.dart';
 import '../../../home/presentation/screens/home_screen.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 import 'welcome_screen.dart';
 
-/// Splash screen shown while the app checks the current auth session.
-/// Shows the Masar logo, app name, and a short entrance animation.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -19,10 +18,19 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
-  late final Animation<double> _logoScale;
-  late final Animation<double> _logoFade;
-  late final Animation<double> _textFade;
+
+  // Tile entrance (the gradient square fading/scaling in).
+  late final Animation<double> _tileScale;
+  late final Animation<double> _tileOpacity;
+
+  // The route glyph tracing itself, then the destination marker landing.
+  late final Animation<double> _routeProgress;
+  late final Animation<double> _markerProgress;
+
+  // Wordmark + tagline + loader.
   late final Animation<Offset> _textSlide;
+  late final Animation<double> _textOpacity;
+  late final Animation<double> _dividerWidth;
 
   @override
   void initState() {
@@ -30,28 +38,31 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1100),
+      duration: const Duration(milliseconds: 5000),
     );
 
-    _logoScale = Tween<double>(begin: 0.7, end: 1.0).animate(
+    _tileScale = Tween<double>(begin: 0.7, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOutBack),
+        curve: const Interval(0.0, 0.30, curve: Curves.easeOutBack),
       ),
     );
 
-    _logoFade = Tween<double>(begin: 0.0, end: 1.0).animate(
+    _tileOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.20, curve: Curves.easeIn),
       ),
     );
 
-    _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.4, 0.85, curve: Curves.easeOut),
-      ),
+    _routeProgress = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.18, 0.62, curve: Curves.easeOutCubic),
+    );
+
+    _markerProgress = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.58, 0.80, curve: Curves.easeOutBack),
     );
 
     _textSlide = Tween<Offset>(
@@ -60,15 +71,57 @@ class _SplashScreenState extends State<SplashScreen>
     ).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.4, 0.85, curve: Curves.easeOut),
+        curve: const Interval(0.55, 0.90, curve: Curves.easeOutCubic),
       ),
     );
 
-    _controller.forward();
+    _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.55, 0.90, curve: Curves.easeIn),
+      ),
+    );
 
-    // Kick off the auth check in parallel with the animation, so the app
-    // never waits longer than necessary before navigating away.
-    context.read<AuthBloc>().add(const AuthStatusChecked());
+    _dividerWidth = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.70, 1.0, curve: Curves.easeOutCubic),
+    );
+
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    final authBloc = context.read<AuthBloc>();
+
+    // Start listening for the auth result BEFORE dispatching the event,
+    // so we don't miss it.
+    final authStateFuture = authBloc.stream.firstWhere(
+      (state) => state is AuthAuthenticated || state is AuthUnauthenticated,
+    );
+
+    authBloc.add(const AuthStatusChecked());
+
+    // Wait for the full animation to play out first...
+    await _controller.forward();
+    // ...then make sure the auth check has actually finished
+    // (instant if it already resolved while the animation was playing).
+    final authState = await authStateFuture;
+
+    if (!mounted) return;
+
+    if (authState is AuthAuthenticated) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        (route) => false,
+      );
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -77,104 +130,102 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  void _navigate(Widget screen) {
-    if (!mounted) return;
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => screen),
-      (route) => false,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is AuthAuthenticated) {
-          _navigate(const HomeScreen());
-        } else if (state is AuthUnauthenticated) {
-          _navigate(const WelcomeScreen());
-        }
-      },
-      child: Scaffold(
-        backgroundColor: AppColors.primary,
-        body: Center(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Opacity(
-                    opacity: _logoFade.value,
-                    child: Transform.scale(
-                      scale: _logoScale.value,
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(28),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
-                              blurRadius: 24,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(14),
-                        child: Image.asset(
-                          'assets/images/app_logo.png',
-                          fit: BoxFit.contain,
-                        ),
-                      ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor:
+          isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      body: Center(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, child) {
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Opacity(
+                  opacity: _tileOpacity.value,
+                  child: Transform.scale(
+                    scale: _tileScale.value,
+                    child: MasarLogo(
+                      size: 140,
+                      progress: _routeProgress.value,
+                      markerProgress: _markerProgress.value,
                     ),
                   ),
-                  const SizedBox(height: 24),
-                  SlideTransition(
+                ),
+                const SizedBox(height: 28),
+                Opacity(
+                  opacity: _textOpacity.value,
+                  child: SlideTransition(
                     position: _textSlide,
-                    child: Opacity(
-                      opacity: _textFade.value,
-                      child: const Column(
-                        children: [
-                          Text(
-                            'Masar',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 32,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.5,
+                    child: Column(
+                      children: [
+                        Text(
+                          'Masar',
+                          style: TextStyle(
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            color: isDark
+                                ? AppColors.textPrimaryDark
+                                : AppColors.textPrimaryLight,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Task Management',
+                          style: TextStyle(
+                            fontSize: 14,
+                            letterSpacing: 0.4,
+                            color: isDark
+                                ? AppColors.textSecondaryDark
+                                : AppColors.textSecondaryLight,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        // A small route-line accent under the wordmark, tying
+                        // the tagline back to the logo's path motif.
+                        ClipRect(
+                          child: Align(
+                            alignment: Alignment.center,
+                            widthFactor: _dividerWidth.value,
+                            child: Container(
+                              width: 48,
+                              height: 3,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(2),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    AppColors.primary,
+                                    AppColors.primaryLight,
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                          SizedBox(height: 6),
-                          Text(
-                            'مسارك لإنجاز مهامك',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 40),
-                  Opacity(
-                    opacity: _textFade.value,
-                    child: const SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
+                ),
+                const SizedBox(height: 36),
+                Opacity(
+                  opacity: _textOpacity.value,
+                  child: SizedBox(
+                    width: 26,
+                    height: 26,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(AppColors.primary),
                     ),
                   ),
-                ],
-              );
-            },
-          ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
