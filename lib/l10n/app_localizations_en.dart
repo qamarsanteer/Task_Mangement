@@ -281,7 +281,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get important => 'Important';
 
   @override
+  String get notImportant => 'Not important';
+
+  @override
   String get urgent => 'Urgent';
+
+  @override
+  String get notUrgent => 'Not urgent';
+
+  @override
+  String get importanceLabel => 'Importance';
+
+  @override
+  String get urgencyLabel => 'Urgency';
 
   @override
   String get deleteTaskTitle => 'Delete Task';
@@ -392,4 +404,85 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get save => 'Save';
+
+  @override
+  String get editTaskTitle => 'Edit Title';
+
+  @override
+  String get editDescription => 'Edit Description';
+
+  @override
+  String get editDueDate => 'Edit Due Date';
+
+  @override
+  String get clearDate => 'Clear date';
+
+  @override
+  String get editPriority => 'Edit Priority';
+
+  @override
+  String get editLabel => 'Edit Label';
+
+  @override
+  String get noLabel => 'No Label';
+
+  @override
+  String get editRepeat => 'Edit Repeat';
+
+  @override
+  String get addAttachment => 'Add Attachment';
+
+  @override
+  String get attachmentContentUnavailable =>
+      'File content isn\'t available anymore (e.g. after a page refresh). This is a temporary limitation until a real upload server is added.';
+
+  @override
+  String get attachmentOpenUnsupported =>
+      'Opening files isn\'t supported on this platform yet.';
+
+  @override
+  String get attachmentPreviewTitle => 'Attachment Preview';
+
+  @override
+  String get attachmentNoPreviewAvailable =>
+      'No preview available for this file type, but you can still download it.';
+
+  @override
+  String get attachmentDownload => 'Download';
+
+  @override
+  String get attachmentDownloadSuccess => 'File saved successfully.';
+
+  @override
+  String get attachmentDownloadCancelled => 'Download cancelled.';
+
+  @override
+  String get attachmentDownloadFailed => 'Failed to download file.';
+
+  @override
+  String get removeAttachment => 'Remove attachment';
+
+  @override
+  String get addMoreAttachments => 'Add more attachments';
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String calendarTasksOn(Object date) {
+    return 'Tasks on $date';
+  }
+
+  @override
+  String get calendarNoTasksForDate => 'No tasks for this date';
+
+  @override
+  String get calendarNoTasksForDateSubtitle =>
+      'Tasks due on this day will show up here';
+
+  @override
+  String get calendarLoadError => 'Couldn\'t load tasks. Pull down to refresh.';
+
+  @override
+  String get calendarPickDate => 'Pick a date';
 }

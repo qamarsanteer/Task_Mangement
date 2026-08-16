@@ -50,6 +50,9 @@ import '../../features/task/domain/usecases/get_tasks_usecase.dart';
 import '../../features/task/domain/usecases/update_task_status_usecase.dart';
 import '../../features/task/presentation/bloc/task_bloc.dart';
 import '../../features/task/domain/usecases/upload_task_attachments_usecase.dart';
+import '../../features/task/domain/usecases/remove_task_attachment_usecase.dart';
+import '../../features/task/domain/usecases/update_task_status_usecase.dart';
+import '../../features/task/domain/usecases/update_task_usecase.dart';
 
 final getIt = GetIt.instance;
 
@@ -183,8 +186,10 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton(() => GetTasksUseCase(getIt()));
   getIt.registerLazySingleton(() => CreateTaskUseCase(getIt()));
   getIt.registerLazySingleton(() => UpdateTaskStatusUseCase(getIt()));
+  getIt.registerLazySingleton(() => UpdateTaskUseCase(getIt()));
   getIt.registerLazySingleton(() => DeleteTaskUseCase(getIt()));
   getIt.registerLazySingleton(() => UploadTaskAttachmentsUseCase(getIt()));
+  getIt.registerLazySingleton(() => RemoveTaskAttachmentUseCase(getIt()));
 
   // ---------- Task: Bloc ----------
   getIt.registerFactory(
@@ -192,7 +197,9 @@ Future<void> setupServiceLocator() async {
       getTasksUseCase: getIt(),
       createTaskUseCase: getIt(),
       updateTaskStatusUseCase: getIt(),
+      updateTaskUseCase: getIt(),
       uploadTaskAttachmentsUseCase: getIt(),
+      removeTaskAttachmentUseCase: getIt(),
       deleteTaskUseCase: getIt(),
     ),
   );

@@ -280,7 +280,19 @@ class AppLocalizationsAr extends AppLocalizations {
   String get important => 'مهم';
 
   @override
+  String get notImportant => 'غير مهم';
+
+  @override
   String get urgent => 'مستعجل';
+
+  @override
+  String get notUrgent => 'غير مستعجل';
+
+  @override
+  String get importanceLabel => 'الأهمية';
+
+  @override
+  String get urgencyLabel => 'الاستعجال';
 
   @override
   String get deleteTaskTitle => 'حذف مهمة';
@@ -391,4 +403,85 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get save => 'حفظ';
+
+  @override
+  String get editTaskTitle => 'تعديل العنوان';
+
+  @override
+  String get editDescription => 'تعديل الوصف';
+
+  @override
+  String get editDueDate => 'تعديل تاريخ الاستحقاق';
+
+  @override
+  String get clearDate => 'إزالة التاريخ';
+
+  @override
+  String get editPriority => 'تعديل الأولوية';
+
+  @override
+  String get editLabel => 'تعديل التصنيف';
+
+  @override
+  String get noLabel => 'بدون تصنيف';
+
+  @override
+  String get editRepeat => 'تعديل التكرار';
+
+  @override
+  String get addAttachment => 'إضافة مرفق';
+
+  @override
+  String get attachmentContentUnavailable =>
+      'محتوى الملف غير متوفر حالياً (مثلاً بعد تحديث الصفحة). هاد قيد مؤقت لحد ما ينضاف سيرفر رفع حقيقي.';
+
+  @override
+  String get attachmentOpenUnsupported =>
+      'فتح الملفات مش مدعوم حالياً على هالمنصة.';
+
+  @override
+  String get attachmentPreviewTitle => 'معاينة المرفق';
+
+  @override
+  String get attachmentNoPreviewAvailable =>
+      'ما في معاينة متوفرة لهذا النوع من الملفات. بس لسا فيك تحمّله.';
+
+  @override
+  String get attachmentDownload => 'تحميل';
+
+  @override
+  String get attachmentDownloadSuccess => 'تم حفظ الملف بنجاح.';
+
+  @override
+  String get attachmentDownloadCancelled => 'تم إلغاء التحميل.';
+
+  @override
+  String get attachmentDownloadFailed => 'فشل تحميل الملف.';
+
+  @override
+  String get removeAttachment => 'إزالة المرفق';
+
+  @override
+  String get addMoreAttachments => 'إضافة مرفقات أكتر';
+
+  @override
+  String get today => 'اليوم';
+
+  @override
+  String calendarTasksOn(Object date) {
+    return 'المهام ليوم $date';
+  }
+
+  @override
+  String get calendarNoTasksForDate => 'ما في مهام بهاد التاريخ';
+
+  @override
+  String get calendarNoTasksForDateSubtitle =>
+      'المهام يلي تاريخ استحقاقها هاد اليوم رح تظهر هون';
+
+  @override
+  String get calendarLoadError => 'ما قدرنا نحمّل المهام. اسحبي للتحت للتحديث.';
+
+  @override
+  String get calendarPickDate => 'اختيار تاريخ';
 }

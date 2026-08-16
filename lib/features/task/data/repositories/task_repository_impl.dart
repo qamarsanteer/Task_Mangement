@@ -160,23 +160,191 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
   }
 
   @override
+  Future<Either<Failure, TaskEntity>> updateTask({
+    required String taskId,
+    required String title,
+    String? description,
+    bool isImportant = false,
+    bool isUrgent = false,
+    DateTime? dueDate,
+    String? labelId,
+    RepeatFrequency repeatFrequency = RepeatFrequency.none,
+  }) async {
+    final isConnected = await _connectivityService.isConnected;
+    final isLocalOnly = taskId.startsWith('local_');
+
+    if (isConnected && !isLocalOnly) {
+      try {
+        final task = await _remoteDataSource.updateTask(
+          taskId: taskId,
+          title: title,
+          description: description,
+          isImportant: isImportant,
+          isUrgent: isUrgent,
+          dueDate: dueDate,
+          labelId: labelId,
+          repeatFrequency: repeatFrequency,
+        );
+        await _updateCachedFields(
+          taskId,
+          title: title,
+          description: description,
+          isImportant: isImportant,
+          isUrgent: isUrgent,
+          dueDate: dueDate,
+          labelId: labelId,
+          repeatFrequency: repeatFrequency,
+        );
+        return Right(task);
+      } on DioException catch (e) {
+        return Left(DioErrorMapper.map(e));
+      } catch (e) {
+        return Left(UnknownFailure(e.toString()));
+      }
+    }
+
+    final updated = await _updateCachedFields(
+      taskId,
+      title: title,
+      description: description,
+      isImportant: isImportant,
+      isUrgent: isUrgent,
+      dueDate: dueDate,
+      labelId: labelId,
+      repeatFrequency: repeatFrequency,
+    );
+    if (updated == null) {
+      return const Left(NetworkFailure('التاسك غير موجود بالكاش.'));
+    }
+
+    if (isLocalOnly) {
+      // لسا ما تزامن → منحدّث الحقول داخل عملية "الإنشاء" المعلّقة نفسها
+      // (بدل ما نضيف عملية منفصلة ممكن تعمل تعارض بالترتيب وقت المزامنة).
+      await _updatePendingCreateFields(
+        taskId,
+        title: title,
+        description: description,
+        isImportant: isImportant,
+        isUrgent: isUrgent,
+        dueDate: dueDate,
+        labelId: labelId,
+        repeatFrequency: repeatFrequency,
+      );
+    } else {
+      // إذا في تعديل معلّق سابق لنفس التاسك، منستبدله بدل ما نكدّس عمليتين
+      await _removePendingUpdate(taskId);
+      await _addPendingOp({
+        'type': 'update',
+        'id': taskId,
+        'title': title,
+        'description': description,
+        'isImportant': isImportant,
+        'isUrgent': isUrgent,
+        'dueDate': dueDate?.toIso8601String(),
+        'labelId': labelId,
+        'repeatFrequency': TaskModel.repeatToString(repeatFrequency),
+      });
+    }
+    return Right(updated);
+  }
+
+  @override
   Future<Either<Failure, List<String>>> uploadAttachments({
     required String taskId,
     required List<String> filePaths,
   }) async {
-    // رفع مرفقات محتاج اتصال فعلي بالسيرفر، ما منعمله أوفلاين.
     final isConnected = await _connectivityService.isConnected;
-    if (!isConnected) {
-      return const Left(NetworkFailure('رفع المرفقات يحتاج اتصال بالإنترنت.'));
+    final isLocalOnly = taskId.startsWith('local_');
+
+    if (isConnected && !isLocalOnly) {
+      try {
+        final urls = await _remoteDataSource.uploadAttachments(taskId: taskId, filePaths: filePaths);
+        await _updateCachedAttachments(taskId, urls);
+        return Right(urls);
+      } on DioException catch (e) {
+        return Left(DioErrorMapper.map(e));
+      } catch (e) {
+        return Left(UnknownFailure(e.toString()));
+      }
     }
-    try {
-      final urls = await _remoteDataSource.uploadAttachments(taskId: taskId, filePaths: filePaths);
-      return Right(urls);
-    } on DioException catch (e) {
-      return Left(DioErrorMapper.map(e));
-    } catch (e) {
-      return Left(UnknownFailure(e.toString()));
+
+    // تاسك محلي بعده ما تزامن (local_) أو الجهاز أوفلاين: منخزّن أسماء
+    // الملفات بالكاش مباشرة بدل ما نحاول نرفعها عالـ remoteDataSource،
+    // لأنه هداك ما رح يلاقي أصلاً تاسك بهيدا المعرّف المؤقت (وهاد بالضبط
+    // كان سبب اختفاء/نقصان المرفقات وقت إنشاء تاسك جديد بدون اتصال حقيقي).
+    final updated = await _updateCachedAttachments(taskId, filePaths);
+    if (updated == null) {
+      return const Left(NetworkFailure('التاسك غير موجود بالكاش.'));
     }
+    return Right(filePaths);
+  }
+
+  @override
+  Future<Either<Failure, TaskEntity>> removeAttachment({
+    required String taskId,
+    required String attachmentUrl,
+  }) async {
+    final isConnected = await _connectivityService.isConnected;
+    final isLocalOnly = taskId.startsWith('local_');
+
+    if (isConnected && !isLocalOnly) {
+      try {
+        final task = await _remoteDataSource.removeAttachment(taskId: taskId, attachmentUrl: attachmentUrl);
+        await _removeCachedAttachment(taskId, attachmentUrl);
+        return Right(task);
+      } on DioException catch (e) {
+        return Left(DioErrorMapper.map(e));
+      } catch (e) {
+        return Left(UnknownFailure(e.toString()));
+      }
+    }
+
+    final updated = await _removeCachedAttachment(taskId, attachmentUrl);
+    if (updated == null) {
+      return const Left(NetworkFailure('التاسك غير موجود بالكاش.'));
+    }
+
+    // إذا كان التاسك لسا محلي (local_) وما انرفع عالسيرفر أصلاً، المرفق
+    // كان مخزّن بس بالكاش المحلي أساساً، فحذفه من الكاش كافي وما في
+    // داعي نسجّل عملية مزامنة منفصلة إلو.
+    if (!isLocalOnly) {
+      await _addPendingOp({'type': 'removeAttachment', 'id': taskId, 'attachmentUrl': attachmentUrl});
+    }
+    return Right(updated);
+  }
+
+  Future<TaskEntity?> _removeCachedAttachment(String taskId, String attachmentUrl) async {
+    final projectId = await _lookupProjectId(taskId);
+    if (projectId == null) return null;
+
+    final current = _cache.getList(_cacheKey(projectId)) ?? [];
+    final index = current.indexWhere((t) => t['id'] == taskId);
+    if (index == -1) return null;
+
+    final existingUrls = (current[index]['attachment_urls'] as List?)?.map((e) => e.toString()).toList() ?? [];
+    existingUrls.remove(attachmentUrl);
+
+    current[index] = {...current[index], 'attachment_urls': existingUrls};
+    await _cache.saveList(_cacheKey(projectId), current);
+    return TaskModel.fromJson(current[index]);
+  }
+
+  Future<TaskEntity?> _updateCachedAttachments(String taskId, List<String> attachmentUrls) async {
+    final projectId = await _lookupProjectId(taskId);
+    if (projectId == null) return null;
+
+    final current = _cache.getList(_cacheKey(projectId)) ?? [];
+    final index = current.indexWhere((t) => t['id'] == taskId);
+    if (index == -1) return null;
+
+    // منضيف الروابط الجداد لأي روابط موجودة أصلاً بالكاش (مش منستبدلها)،
+    // نفس منطق الـ Bloc تماماً، حتى ما نفقد مرفقات سابقة كانت محفوظة.
+    final existingUrls = (current[index]['attachment_urls'] as List?)?.map((e) => e.toString()).toList() ?? [];
+    final mergedUrls = {...existingUrls, ...attachmentUrls}.toList();
+
+    current[index] = {...current[index], 'attachment_urls': mergedUrls};
+    await _cache.saveList(_cacheKey(projectId), current);
+    return TaskModel.fromJson(current[index]);
   }
 
   @override
@@ -202,8 +370,9 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     if (isLocalOnly) {
       await _removePendingCreate(taskId);
     } else {
-      // إذا كان في تعديل حالة معلّق لنفس التاسك، ما عاد له داعي
+      // إذا كان في تعديل حالة أو تعديل بيانات معلّق لنفس التاسك، ما عاد له داعي
       await _removePendingUpdateStatus(taskId);
+      await _removePendingUpdate(taskId);
       await _addPendingOp({'type': 'delete', 'id': taskId});
     }
     return const Right(null);
@@ -251,6 +420,26 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
             );
             break;
 
+          case 'update':
+            await _remoteDataSource.updateTask(
+              taskId: op['id'] as String,
+              title: op['title'] as String,
+              description: op['description'] as String?,
+              isImportant: op['isImportant'] as bool? ?? false,
+              isUrgent: op['isUrgent'] as bool? ?? false,
+              dueDate: op['dueDate'] != null ? DateTime.tryParse(op['dueDate'] as String) : null,
+              labelId: op['labelId'] as String?,
+              repeatFrequency: _repeatFromStringPublic(op['repeatFrequency'] as String?),
+            );
+            break;
+
+          case 'removeAttachment':
+            await _remoteDataSource.removeAttachment(
+              taskId: op['id'] as String,
+              attachmentUrl: op['attachmentUrl'] as String,
+            );
+            break;
+
           case 'delete':
             await _remoteDataSource.deleteTask(op['id'] as String);
             break;
@@ -279,6 +468,37 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     if (index == -1) return null;
 
     current[index] = {...current[index], 'status': TaskModel.statusToString(status)};
+    await _cache.saveList(_cacheKey(projectId), current);
+    return TaskModel.fromJson(current[index]);
+  }
+
+  Future<TaskEntity?> _updateCachedFields(
+    String taskId, {
+    required String title,
+    String? description,
+    required bool isImportant,
+    required bool isUrgent,
+    DateTime? dueDate,
+    String? labelId,
+    required RepeatFrequency repeatFrequency,
+  }) async {
+    final projectId = await _lookupProjectId(taskId);
+    if (projectId == null) return null;
+
+    final current = _cache.getList(_cacheKey(projectId)) ?? [];
+    final index = current.indexWhere((t) => t['id'] == taskId);
+    if (index == -1) return null;
+
+    current[index] = {
+      ...current[index],
+      'title': title,
+      'description': description,
+      'is_important': isImportant,
+      'is_urgent': isUrgent,
+      'due_date': dueDate?.toIso8601String(),
+      'label_id': labelId,
+      'repeat_frequency': TaskModel.repeatToString(repeatFrequency),
+    };
     await _cache.saveList(_cacheKey(projectId), current);
     return TaskModel.fromJson(current[index]);
   }
@@ -334,6 +554,39 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     final ops = _cache.getList(_pendingOpsKey) ?? [];
     ops.removeWhere((op) => op['type'] == 'updateStatus' && op['id'] == taskId);
     await _cache.saveList(_pendingOpsKey, ops);
+  }
+
+  Future<void> _removePendingUpdate(String taskId) async {
+    final ops = _cache.getList(_pendingOpsKey) ?? [];
+    ops.removeWhere((op) => op['type'] == 'update' && op['id'] == taskId);
+    await _cache.saveList(_pendingOpsKey, ops);
+  }
+
+  Future<void> _updatePendingCreateFields(
+    String tempId, {
+    required String title,
+    String? description,
+    required bool isImportant,
+    required bool isUrgent,
+    DateTime? dueDate,
+    String? labelId,
+    required RepeatFrequency repeatFrequency,
+  }) async {
+    final ops = _cache.getList(_pendingOpsKey) ?? [];
+    final index = ops.indexWhere((op) => op['type'] == 'create' && op['tempId'] == tempId);
+    if (index != -1) {
+      ops[index] = {
+        ...ops[index],
+        'title': title,
+        'description': description,
+        'isImportant': isImportant,
+        'isUrgent': isUrgent,
+        'dueDate': dueDate?.toIso8601String(),
+        'labelId': labelId,
+        'repeatFrequency': TaskModel.repeatToString(repeatFrequency),
+      };
+      await _cache.saveList(_pendingOpsKey, ops);
+    }
   }
 
   Future<void> _updatePendingCreateStatus(String tempId, TaskStatus status) async {

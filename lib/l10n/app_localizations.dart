@@ -626,11 +626,35 @@ abstract class AppLocalizations {
   /// **'Important'**
   String get important;
 
+  /// No description provided for @notImportant.
+  ///
+  /// In en, this message translates to:
+  /// **'Not important'**
+  String get notImportant;
+
   /// No description provided for @urgent.
   ///
   /// In en, this message translates to:
   /// **'Urgent'**
   String get urgent;
+
+  /// No description provided for @notUrgent.
+  ///
+  /// In en, this message translates to:
+  /// **'Not urgent'**
+  String get notUrgent;
+
+  /// No description provided for @importanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Importance'**
+  String get importanceLabel;
+
+  /// No description provided for @urgencyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Urgency'**
+  String get urgencyLabel;
 
   /// No description provided for @deleteTaskTitle.
   ///
@@ -847,6 +871,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Save'**
   String get save;
+
+  /// No description provided for @editTaskTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Title'**
+  String get editTaskTitle;
+
+  /// No description provided for @editDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Description'**
+  String get editDescription;
+
+  /// No description provided for @editDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Due Date'**
+  String get editDueDate;
+
+  /// No description provided for @clearDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear date'**
+  String get clearDate;
+
+  /// No description provided for @editPriority.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Priority'**
+  String get editPriority;
+
+  /// No description provided for @editLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Label'**
+  String get editLabel;
+
+  /// No description provided for @noLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'No Label'**
+  String get noLabel;
+
+  /// No description provided for @editRepeat.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Repeat'**
+  String get editRepeat;
+
+  /// No description provided for @addAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Attachment'**
+  String get addAttachment;
+
+  /// No description provided for @attachmentContentUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'File content isn\'t available anymore (e.g. after a page refresh). This is a temporary limitation until a real upload server is added.'**
+  String get attachmentContentUnavailable;
+
+  /// No description provided for @attachmentOpenUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening files isn\'t supported on this platform yet.'**
+  String get attachmentOpenUnsupported;
+
+  /// No description provided for @attachmentPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachment Preview'**
+  String get attachmentPreviewTitle;
+
+  /// No description provided for @attachmentNoPreviewAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No preview available for this file type, but you can still download it.'**
+  String get attachmentNoPreviewAvailable;
+
+  /// No description provided for @attachmentDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get attachmentDownload;
+
+  /// No description provided for @attachmentDownloadSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'File saved successfully.'**
+  String get attachmentDownloadSuccess;
+
+  /// No description provided for @attachmentDownloadCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Download cancelled.'**
+  String get attachmentDownloadCancelled;
+
+  /// No description provided for @attachmentDownloadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to download file.'**
+  String get attachmentDownloadFailed;
+
+  /// No description provided for @removeAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove attachment'**
+  String get removeAttachment;
+
+  /// No description provided for @addMoreAttachments.
+  ///
+  /// In en, this message translates to:
+  /// **'Add more attachments'**
+  String get addMoreAttachments;
+
+  /// No description provided for @today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get today;
+
+  /// No description provided for @calendarTasksOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks on {date}'**
+  String calendarTasksOn(Object date);
+
+  /// No description provided for @calendarNoTasksForDate.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks for this date'**
+  String get calendarNoTasksForDate;
+
+  /// No description provided for @calendarNoTasksForDateSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks due on this day will show up here'**
+  String get calendarNoTasksForDateSubtitle;
+
+  /// No description provided for @calendarLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load tasks. Pull down to refresh.'**
+  String get calendarLoadError;
+
+  /// No description provided for @calendarPickDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a date'**
+  String get calendarPickDate;
 }
 
 class _AppLocalizationsDelegate

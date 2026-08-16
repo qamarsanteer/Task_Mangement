@@ -1,9 +1,12 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../../../../core/utils/attachment_bytes_cache.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/widgets/custom_text_field.dart';
+import '../../../../core/widgets/segmented_toggle.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../project/domain/entities/project_entity.dart';
 import '../../domain/entities/task_entity.dart';
@@ -362,8 +365,10 @@ class _TasksViewState extends State<_TasksView> {
     final bloc = context.read<TaskBloc>();
 
     DateTime? selectedDate;
-    bool isImportant = false;
-    bool isUrgent = false;
+    // الأولوية صارت محورين مستقلين، كل واحد فيهم إجباري وإله قيمة افتراضية
+    // واضحة (مهم/عاجل) — المستخدم بيقدر يبدلها لكن ما فيه حالة "بدون قيمة".
+    bool isImportant = true;
+    bool isUrgent = true;
     String? selectedLabelId;
     RepeatFrequency repeatFrequency = RepeatFrequency.none;
     List<String> attachmentPaths = [];
@@ -395,60 +400,86 @@ class _TasksViewState extends State<_TasksView> {
                     hint: l10n.taskDescriptionHint,
                   ),
                   const SizedBox(height: 16),
-                  InkWell(
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: dialogContext,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now().subtract(const Duration(days: 1)),
-                        lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-                      );
-                      if (picked != null) setState(() => selectedDate = picked);
-                    },
-                    child: InputDecorator(
-                      decoration: InputDecoration(labelText: l10n.dueDateLabel),
-                      child: Text(selectedDate != null ? _formatFullDate(selectedDate!) : l10n.selectDueDate),
+                  FormField<DateTime>(
+                    initialValue: selectedDate,
+                    validator: (value) => value == null ? l10n.requiredField : null,
+                    builder: (field) => InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: dialogContext,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                          lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                        );
+                        if (picked != null) {
+                          setState(() => selectedDate = picked);
+                          field.didChange(picked);
+                        }
+                      },
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: l10n.dueDateLabel,
+                          errorText: field.errorText,
+                        ),
+                        child: Text(selectedDate != null ? _formatFullDate(selectedDate!) : l10n.selectDueDate),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: CheckboxListTile(
-                          contentPadding: EdgeInsets.zero,
-                          value: isImportant,
-                          onChanged: (value) => setState(() => isImportant = value ?? false),
-                          title: Text(l10n.important, style: const TextStyle(fontSize: 13)),
-                          controlAffinity: ListTileControlAffinity.leading,
-                        ),
-                      ),
-                      Expanded(
-                        child: CheckboxListTile(
-                          contentPadding: EdgeInsets.zero,
-                          value: isUrgent,
-                          onChanged: (value) => setState(() => isUrgent = value ?? false),
-                          title: Text(l10n.urgent, style: const TextStyle(fontSize: 13)),
-                          controlAffinity: ListTileControlAffinity.leading,
-                        ),
-                      ),
-                    ],
+                  // ─── الأهمية والاستعجال صاروا محورين مستقلين، كل واحد
+                  // فيهم اختيار إجباري بين قيمتين، بدل تشيك بوكس اختياري ───
+                  SegmentedToggle(
+                    label: l10n.importanceLabel,
+                    trueLabel: l10n.important,
+                    falseLabel: l10n.notImportant,
+                    value: isImportant,
+                    onChanged: (value) => setState(() => isImportant = value),
+                  ),
+                  const SizedBox(height: 12),
+                  SegmentedToggle(
+                    label: l10n.urgencyLabel,
+                    trueLabel: l10n.urgent,
+                    falseLabel: l10n.notUrgent,
+                    value: isUrgent,
+                    onChanged: (value) => setState(() => isUrgent = value),
                   ),
                   const SizedBox(height: 8),
                   Text(l10n.labelField, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: TaskLabels.predefined.map((label) {
-                      final selected = selectedLabelId == label.id;
-                      return ChoiceChip(
-                        label: Text(_labelName(l10n, label.id)),
-                        selected: selected,
-                        selectedColor: Color(label.colorValue),
-                        labelStyle: TextStyle(color: selected ? Colors.white : null, fontSize: 12),
-                        onSelected: (_) => setState(() => selectedLabelId = selected ? null : label.id),
-                      );
-                    }).toList(),
+                  FormField<String>(
+                    initialValue: selectedLabelId,
+                    validator: (value) => value == null ? l10n.requiredField : null,
+                    builder: (field) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: TaskLabels.predefined.map((label) {
+                            final selected = selectedLabelId == label.id;
+                            return ChoiceChip(
+                              label: Text(_labelName(l10n, label.id)),
+                              selected: selected,
+                              selectedColor: Color(label.colorValue),
+                              labelStyle: TextStyle(color: selected ? Colors.white : null, fontSize: 12),
+                              onSelected: (_) {
+                                // ما منسمحش نلغي التحديد ونرجع لـ null هون —
+                                // التصنيف صار حقل إجباري، فلازم يضل في تصنيف
+                                // محدد دايماً (المستخدم بس بيقدر يبدّل التصنيف
+                                // مش يمسحه بالكامل).
+                                final newValue = label.id;
+                                setState(() => selectedLabelId = newValue);
+                                field.didChange(newValue);
+                              },
+                            );
+                          }).toList(),
+                        ),
+                        if (field.errorText != null) ...[
+                          const SizedBox(height: 6),
+                          Text(field.errorText!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
+                        ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<RepeatFrequency>(
@@ -462,14 +493,55 @@ class _TasksViewState extends State<_TasksView> {
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: () async {
-                      final result = await FilePicker.platform.pickFiles(allowMultiple: true);
+                      final result = await FilePicker.platform.pickFiles(allowMultiple: true, withData: true);
                       if (result != null) {
-                        setState(() => attachmentPaths = result.paths.whereType<String>().toList());
+                        // على الويب (Chrome) الـ file_picker ما بيرجّع path أبداً (بيرجع null)،
+                        // فلازم نرجع لاسم الملف كـ fallback، وإلا القائمة بتضل فاضية بصمت.
+                        final selected = result.files.map((f) => kIsWeb ? f.name : (f.path ?? f.name)).toList();
+                        // منخزّن محتوى الملف (bytes) بالذاكرة حتى نقدر نفتحه/نعاينه لاحقاً
+                        // من شاشة تفاصيل التاسك (شوفي attachment_bytes_cache.dart).
+                        for (final f in result.files) {
+                          if (f.bytes != null) {
+                            AttachmentBytesCache.instance.put(kIsWeb ? f.name : (f.path ?? f.name), f.bytes!);
+                          }
+                        }
+                        setState(() {
+                          // منضيف الملفات الجداد لقائمة الملفات المختارة سابقاً بدل
+                          // ما نستبدلها بالكامل — قبل هيك، لو المستخدم ضغط زر
+                          // الإرفاق أكتر من مرة (مثلاً حتى يضيف مرفقات بدفعات)، كانت
+                          // آخر دفعة تلغي/تمسح الدفعات يلي قبلها، وهيك عملياً كان
+                          // التاسك بينخلق بمرفق واحد بس مهما حاول المستخدم يضيف أكتر.
+                          // منستبعد أي مسار موجود مسبقاً حتى ما نكرر نفس الملف مرتين.
+                          for (final path in selected) {
+                            if (!attachmentPaths.contains(path)) {
+                              attachmentPaths.add(path);
+                            }
+                          }
+                        });
                       }
                     },
                     icon: const Icon(Icons.attach_file),
-                    label: Text(attachmentPaths.isEmpty ? l10n.attachmentsLabel : '${attachmentPaths.length} ${l10n.filesSelected}'),
+                    label: Text(
+                      attachmentPaths.isEmpty ? l10n.attachmentsLabel : l10n.addMoreAttachments,
+                    ),
                   ),
+                  if (attachmentPaths.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text('${attachmentPaths.length} ${l10n.filesSelected}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: attachmentPaths.map((path) {
+                        final fileName = path.split(RegExp(r'[\\/]')).last;
+                        return Chip(
+                          label: Text(fileName, overflow: TextOverflow.ellipsis),
+                          onDeleted: () => setState(() => attachmentPaths.remove(path)),
+                          deleteIconColor: AppColors.error,
+                        );
+                      }).toList(),
+                    ),
+                  ],
                 ],
               ),
             ),

@@ -42,6 +42,52 @@ class TaskCreateRequested extends TaskEvent {
       [projectId, title, description, isImportant, isUrgent, dueDate, labelId, repeatFrequency, attachmentPaths];
 }
 
+class TaskUpdateRequested extends TaskEvent {
+  final String taskId;
+  final String title;
+  final String? description;
+  final bool isImportant;
+  final bool isUrgent;
+  final DateTime? dueDate;
+  final String? labelId;
+  final RepeatFrequency repeatFrequency;
+
+  const TaskUpdateRequested({
+    required this.taskId,
+    required this.title,
+    this.description,
+    this.isImportant = false,
+    this.isUrgent = false,
+    this.dueDate,
+    this.labelId,
+    this.repeatFrequency = RepeatFrequency.none,
+  });
+
+  @override
+  List<Object?> get props =>
+      [taskId, title, description, isImportant, isUrgent, dueDate, labelId, repeatFrequency];
+}
+
+/// طلب إضافة مرفقات لتاسك موجود مسبقاً (من شاشة تفاصيل التاسك).
+/// منفصل عن TaskCreateRequested لأنه هون التاسك أصلاً موجود وممكن يكون
+/// عندو مرفقات سابقة، فمنضيف الجداد إلها بدل ما نستبدلها.
+class TaskAttachmentAddRequested extends TaskEvent {
+  final String taskId;
+  final List<String> filePaths;
+  const TaskAttachmentAddRequested({required this.taskId, required this.filePaths});
+  @override
+  List<Object?> get props => [taskId, filePaths];
+}
+
+/// طلب حذف مرفق واحد من تاسك موجود (من شاشة تفاصيل التاسك).
+class TaskAttachmentRemoveRequested extends TaskEvent {
+  final String taskId;
+  final String attachmentUrl;
+  const TaskAttachmentRemoveRequested({required this.taskId, required this.attachmentUrl});
+  @override
+  List<Object?> get props => [taskId, attachmentUrl];
+}
+
 class TaskStatusChangeRequested extends TaskEvent {
   final String taskId;
   final TaskStatus status;
