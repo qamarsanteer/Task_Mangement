@@ -96,16 +96,39 @@ class TaskStatusChangeRequested extends TaskEvent {
   List<Object?> get props => [taskId, status];
 }
 
+/// حذف مؤقت (نقل لسلة المحذوفات). لازم نمرر اسم المشروع والـ workspace
+/// هون (Snapshot) — الشاشة (TasksScreen) أصلاً عندها هالمعلومات بالذاكرة،
+/// فما في داعي الـ Bloc/Repository يروحوا يجيبوها من مكان تاني.
 class TaskDeleteRequested extends TaskEvent {
   final String taskId;
-  const TaskDeleteRequested(this.taskId);
+  final String projectName;
+  final String workspaceId;
+  final String workspaceName;
+
+  const TaskDeleteRequested(
+    this.taskId, {
+    required this.projectName,
+    required this.workspaceId,
+    required this.workspaceName,
+  });
+
   @override
-  List<Object?> get props => [taskId];
+  List<Object?> get props => [taskId, projectName, workspaceId, workspaceName];
 }
 
 class TasksDeleteRequested extends TaskEvent {
   final List<String> taskIds;
-  const TasksDeleteRequested(this.taskIds);
+  final String projectName;
+  final String workspaceId;
+  final String workspaceName;
+
+  const TasksDeleteRequested(
+    this.taskIds, {
+    required this.projectName,
+    required this.workspaceId,
+    required this.workspaceName,
+  });
+
   @override
-  List<Object?> get props => [taskIds];
+  List<Object?> get props => [taskIds, projectName, workspaceId, workspaceName];
 }

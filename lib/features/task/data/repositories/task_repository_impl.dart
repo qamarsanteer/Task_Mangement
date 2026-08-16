@@ -6,6 +6,7 @@ import '../../../../core/error/failure.dart';
 import '../../../../core/network/connectivity_service.dart';
 import '../../../../core/sync/syncable.dart';
 import '../../domain/entities/task_entity.dart';
+import '../../domain/entities/deleted_task_entry.dart';
 import '../../domain/repositories/task_repository.dart';
 import '../datasources/task_remote_data_source.dart';
 import '../models/task_model.dart';
@@ -15,6 +16,9 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
   // فهرس صغير: taskId → projectId، حتى نعرف من أي كاش نمسح/نحدّث التاسك
   // (بما إنه updateTaskStatus وdeleteTask بياخدوا taskId بس).
   static const _indexKey = 'task_project_index';
+  // كاش سلة المحذوفات — لقطة (snapshot) كاملة لكل تاسك محذوف مؤقتاً
+  // (التاسك نفسه + اسم المشروع/الـ workspace وقت الحذف + تاريخ الحذف).
+  static const _binCacheKey = 'cache_deleted_tasks';
 
   final TaskRemoteDataSource _remoteDataSource;
   final LocalCacheService _cache;
@@ -347,16 +351,130 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     return TaskModel.fromJson(current[index]);
   }
 
-  @override
-  Future<Either<Failure, void>> deleteTask(String taskId) async {
-    final isConnected = await _connectivityService.isConnected;
-    final isLocalOnly = taskId.startsWith('local_');
-    final projectId = await _lookupProjectId(taskId);
+  // ─── حذف مؤقت (نقل للسلة) / استرجاع / حذف نهائي ───
 
-    if (isConnected && !isLocalOnly) {
+  @override
+  Future<Either<Failure, void>> deleteTask(
+    String taskId, {
+    required String projectName,
+    required String workspaceId,
+    required String workspaceName,
+  }) async {
+    final projectId = await _lookupProjectId(taskId);
+    if (projectId == null) {
+      return const Left(NetworkFailure('التاسك غير موجود بالكاش.'));
+    }
+
+    final current = _cache.getList(_cacheKey(projectId)) ?? [];
+    final index = current.indexWhere((t) => t['id'] == taskId);
+    if (index == -1) {
+      return const Left(NetworkFailure('التاسك غير موجود بالكاش.'));
+    }
+
+    // منلقط بيانات التاسك الكاملة قبل ما نمسحه من الكاش النشط، حتى
+    // نخزّنها كـ Snapshot جوا سلة المحذوفات (اسم المشروع/الـ workspace
+    // بيتخزنوا هلق كمان، مش بيتجابوا لاحقاً بالـ id، لأنه ممكن ينحذف
+    // المشروع أو الـ workspace نفسه قبل ما يسترجع المستخدم التاسك).
+    final task = TaskModel.fromJson(current[index]);
+
+    // منشيل التاسك من كاش المشروع النشط + من فهرس taskId → projectId.
+    // ⚠️ بقصد ما منلمس pending ops ولا منندي أي remote delete هون —
+    // الحذف "المؤقت" (نقل للسلة) عملية محلية 100% لحتى الآن.
+    await _removeFromCache(projectId, taskId);
+
+    await _addToBin(DeletedTaskEntry(
+      task: task,
+      projectName: projectName,
+      workspaceId: workspaceId,
+      workspaceName: workspaceName,
+      deletedAt: DateTime.now(),
+    ));
+
+    return const Right(null);
+  }
+
+  @override
+  Future<Either<Failure, List<DeletedTaskEntry>>> getDeletedTasks() async {
+    final entries = await _readBinList();
+
+    // تنظيف كسول (lazy purge): أي تاسك عدّى عليه 30 يوم بالسلة بينحذف
+    // نهائياً تلقائياً كل مرة نقرأ فيها قائمة السلة (مثلاً وقت ما تنفتح
+    // شاشة الـ Bin). ما في background job حقيقي بالتطبيق فهاي أبسط طريقة
+    // مضمونة بدون سيرفر.
+    final expired = entries.where((e) => e.isExpired).toList();
+    for (final entry in expired) {
+      await _finalizeDelete(entry); // best-effort، ما بتوقف لو فشلت
+    }
+
+    final remaining = expired.isEmpty ? entries : await _readBinList();
+    remaining.sort((a, b) => b.deletedAt.compareTo(a.deletedAt));
+    return Right(remaining);
+  }
+
+  @override
+  Future<Either<Failure, TaskEntity>> restoreTask(String taskId) async {
+    final entries = await _readBinList();
+    DeletedTaskEntry? entry;
+    for (final e in entries) {
+      if (e.task.id == taskId) {
+        entry = e;
+        break;
+      }
+    }
+    if (entry == null) {
+      return const Left(NetworkFailure('التاسك غير موجود بالسلة.'));
+    }
+
+    // منرجّعه لنفس كاش المشروع الأصلي (نفس projectId المخزّن بالتاسك
+    // نفسه) بدون أي نداء remote، لأنه أصلاً ما كان انحذف من السيرفر.
+    final projectId = entry.task.projectId;
+    final current = _cache.getList(_cacheKey(projectId)) ?? [];
+    current.add((entry.task as TaskModel).toJson());
+    await _cache.saveList(_cacheKey(projectId), current);
+    await _indexTasks(projectId, [taskId]);
+
+    await _removeFromBin(taskId);
+    return Right(entry.task);
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteTaskForever(String taskId) async {
+    final entries = await _readBinList();
+    DeletedTaskEntry? entry;
+    for (final e in entries) {
+      if (e.task.id == taskId) {
+        entry = e;
+        break;
+      }
+    }
+    if (entry == null) {
+      return const Left(NetworkFailure('التاسك غير موجود بالسلة.'));
+    }
+    return _finalizeDelete(entry);
+  }
+
+  /// الحذف الفعلي (النهائي) — سواء بطلب يدوي من المستخدم من شاشة السلة،
+  /// أو تلقائياً بعد ما تعدي مدة الـ 30 يوم.
+  Future<Either<Failure, void>> _finalizeDelete(DeletedTaskEntry entry) async {
+    final taskId = entry.task.id;
+    final isLocalOnly = taskId.startsWith('local_');
+
+    if (isLocalOnly) {
+      // التاسك أصلاً ما انخلق عالسيرفر (لسا محلي) — ما في شي نحذفه
+      // هناك، بس منلغي عملية "الإنشاء" المعلّقة إلو حتى ما يظهر
+      // فجأة بعد ما ترجع المزامنة.
+      await _removePendingCreate(taskId);
+      await _removeFromBin(taskId);
+      return const Right(null);
+    }
+
+    final isConnected = await _connectivityService.isConnected;
+    if (isConnected) {
       try {
         await _remoteDataSource.deleteTask(taskId);
-        if (projectId != null) await _removeFromCache(projectId, taskId);
+        await _removePendingUpdateStatus(taskId);
+        await _removePendingUpdate(taskId);
+        await _removeFromBin(taskId);
         return const Right(null);
       } on DioException catch (e) {
         return Left(DioErrorMapper.map(e));
@@ -365,16 +483,13 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       }
     }
 
-    if (projectId != null) await _removeFromCache(projectId, taskId);
-
-    if (isLocalOnly) {
-      await _removePendingCreate(taskId);
-    } else {
-      // إذا كان في تعديل حالة أو تعديل بيانات معلّق لنفس التاسك، ما عاد له داعي
-      await _removePendingUpdateStatus(taskId);
-      await _removePendingUpdate(taskId);
-      await _addPendingOp({'type': 'delete', 'id': taskId});
-    }
+    // أوفلاين: منشيله محلياً من السلة فوراً، ومنسجّل عملية حذف معلّقة
+    // حتى يتحذف فعلياً من السيرفر لما يرجع الاتصال (نفس آلية 'delete'
+    // الموجودة أصلاً بـ syncPendingChanges).
+    await _removePendingUpdateStatus(taskId);
+    await _removePendingUpdate(taskId);
+    await _removeFromBin(taskId);
+    await _addPendingOp({'type': 'delete', 'id': taskId});
     return const Right(null);
   }
 
@@ -620,5 +735,46 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       default:
         return RepeatFrequency.none;
     }
+  }
+
+  // ─── سلة المحذوفات (Bin) — تخزين/قراءة ───
+
+  Future<List<DeletedTaskEntry>> _readBinList() async {
+    final raw = _cache.getList(_binCacheKey) ?? [];
+    return raw.map(_entryFromJson).toList();
+  }
+
+  Future<void> _addToBin(DeletedTaskEntry entry) async {
+    final raw = _cache.getList(_binCacheKey) ?? [];
+    raw.add(_entryToJson(entry));
+    await _cache.saveList(_binCacheKey, raw);
+  }
+
+  Future<void> _removeFromBin(String taskId) async {
+    final raw = _cache.getList(_binCacheKey) ?? [];
+    raw.removeWhere((e) => e['task']?['id'] == taskId);
+    await _cache.saveList(_binCacheKey, raw);
+  }
+
+  Map<String, dynamic> _entryToJson(DeletedTaskEntry entry) {
+    return {
+      'task': (entry.task as TaskModel).toJson(),
+      'project_name': entry.projectName,
+      'workspace_id': entry.workspaceId,
+      'workspace_name': entry.workspaceName,
+      'deleted_at': entry.deletedAt.toIso8601String(),
+    };
+  }
+
+  DeletedTaskEntry _entryFromJson(Map<String, dynamic> json) {
+    return DeletedTaskEntry(
+      task: TaskModel.fromJson(json['task'] as Map<String, dynamic>),
+      projectName: json['project_name']?.toString() ?? '',
+      workspaceId: json['workspace_id']?.toString() ?? '',
+      workspaceName: json['workspace_name']?.toString() ?? '',
+      deletedAt: json['deleted_at'] != null
+          ? DateTime.tryParse(json['deleted_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+    );
   }
 }

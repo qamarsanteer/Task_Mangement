@@ -6,7 +6,17 @@ class DeleteTaskUseCase {
   final TaskRepository repository;
   DeleteTaskUseCase(this.repository);
 
-  Future<Either<Failure, void>> call(String taskId) {
-    return repository.deleteTask(taskId);
+  Future<Either<Failure, void>> call(
+    String taskId, {
+    required String projectName,
+    required String workspaceId,
+    required String workspaceName,
+  }) {
+    return repository.deleteTask(
+      taskId,
+      projectName: projectName,
+      workspaceId: workspaceId,
+      workspaceName: workspaceName,
+    );
   }
 }

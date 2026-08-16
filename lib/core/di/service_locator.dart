@@ -54,6 +54,13 @@ import '../../features/task/domain/usecases/remove_task_attachment_usecase.dart'
 import '../../features/task/domain/usecases/update_task_status_usecase.dart';
 import '../../features/task/domain/usecases/update_task_usecase.dart';
 
+import '../../features/bin/data/repositories/bin_repository_impl.dart';
+import '../../features/bin/domain/repositories/bin_repository.dart';
+import '../../features/bin/domain/usecases/delete_task_forever_usecase.dart';
+import '../../features/bin/domain/usecases/get_deleted_tasks_usecase.dart';
+import '../../features/bin/domain/usecases/restore_task_usecase.dart';
+import '../../features/bin/presentation/bloc/bin_bloc.dart';
+
 final getIt = GetIt.instance;
 
 /// غيّر هاد المتغير لـ false لما يجهز السيرفر الحقيقي
@@ -201,6 +208,25 @@ Future<void> setupServiceLocator() async {
       uploadTaskAttachmentsUseCase: getIt(),
       removeTaskAttachmentUseCase: getIt(),
       deleteTaskUseCase: getIt(),
+    ),
+  );
+
+  // ---------- Bin: Repository ----------
+  getIt.registerLazySingleton<BinRepository>(
+    () => BinRepositoryImpl(taskRepository: getIt()),
+  );
+
+  // ---------- Bin: Use cases ----------
+  getIt.registerLazySingleton(() => GetDeletedTasksUseCase(getIt()));
+  getIt.registerLazySingleton(() => RestoreTaskUseCase(getIt()));
+  getIt.registerLazySingleton(() => DeleteTaskForeverUseCase(getIt()));
+
+  // ---------- Bin: Bloc ----------
+  getIt.registerFactory(
+    () => BinBloc(
+      getDeletedTasksUseCase: getIt(),
+      restoreTaskUseCase: getIt(),
+      deleteTaskForeverUseCase: getIt(),
     ),
   );
 

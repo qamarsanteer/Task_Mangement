@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failure.dart';
 import '../entities/task_entity.dart';
+import '../entities/deleted_task_entry.dart'; // ⬅️ جديد
 
 abstract class TaskRepository {
   Future<Either<Failure, List<TaskEntity>>> getTasks(String projectId);
@@ -22,8 +23,6 @@ abstract class TaskRepository {
   });
 
   /// تعديل بيانات التاسك (العنوان، الوصف، تاريخ الاستحقاق، الأولوية، التصنيف، التكرار).
-  /// دايماً منبعت كل الحقول (متل TaskCreateRequested) — الحقل يلي ما تغيّر
-  /// منبعته بقيمته الحالية، هيك ما في حاجة نميّز "ما تغيّر" عن "صار null".
   Future<Either<Failure, TaskEntity>> updateTask({
     required String taskId,
     required String title,
@@ -40,11 +39,29 @@ abstract class TaskRepository {
     required List<String> filePaths,
   });
 
-  /// حذف مرفق واحد من التاسك (بالـ URL/المسار تبعو).
   Future<Either<Failure, TaskEntity>> removeAttachment({
     required String taskId,
     required String attachmentUrl,
   });
 
-  Future<Either<Failure, void>> deleteTask(String taskId);
+  /// نقل التاسك لسلة المحذوفات (soft-delete) — ما بيحذفه نهائياً من
+  /// السيرفر إطلاقاً. لازم نمرر اسم المشروع والـ workspace هون لأنه
+  /// ممكن ينحذف المشروع نفسه قبل ما المستخدم يسترجع التاسك من السلة.
+  Future<Either<Failure, void>> deleteTask(
+    String taskId, {
+    required String projectName,
+    required String workspaceId,
+    required String workspaceName,
+  });
+
+  /// قائمة التاسكات الموجودة حالياً بسلة المحذوفات. بتنظّف تلقائياً أي
+  /// تاسك عدّى عليه 30 يوم قبل ما ترجّع القائمة (حذف نهائي تلقائي).
+  Future<Either<Failure, List<DeletedTaskEntry>>> getDeletedTasks();
+
+  /// يرجّع تاسك من السلة لمكانه الأصلي (نفس المشروع اللي كان فيه).
+  Future<Either<Failure, TaskEntity>> restoreTask(String taskId);
+
+  /// حذف نهائي من السلة — هون بس بيصير نداء حذف حقيقي عالسيرفر
+  /// (أو تسجيل عملية معلّقة لو الجهاز أوفلاين).
+  Future<Either<Failure, void>> deleteTaskForever(String taskId);
 }

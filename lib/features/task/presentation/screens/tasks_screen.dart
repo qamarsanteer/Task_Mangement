@@ -18,20 +18,25 @@ import 'task_detail_screen.dart';
 
 class TasksScreen extends StatelessWidget {
   final ProjectEntity project;
-  const TasksScreen({super.key, required this.project});
+  // اسم الـ workspace اللي المشروع تابع إلها — لازم يوصل من الشاشة اللي
+  // فتحت TasksScreen (ProjectsScreen)، لأنه ProjectEntity ما فيها اسم
+  // الـ workspace، بس id تبعها. منستخدمو كـ Snapshot وقت حذف أي تاسك.
+  final String workspaceName;
+  const TasksScreen({super.key, required this.project, required this.workspaceName});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => getIt<TaskBloc>()..add(TasksLoadRequested(project.id)),
-      child: _TasksView(project: project),
+      child: _TasksView(project: project, workspaceName: workspaceName),
     );
   }
 }
 
 class _TasksView extends StatefulWidget {
   final ProjectEntity project;
-  const _TasksView({required this.project});
+  final String workspaceName;
+  const _TasksView({required this.project, required this.workspaceName});
 
   @override
   State<_TasksView> createState() => _TasksViewState();
@@ -85,7 +90,12 @@ class _TasksViewState extends State<_TasksView> {
         actions: [
           ElevatedButton(
             onPressed: () {
-              bloc.add(TasksDeleteRequested(_selectedIds.toList()));
+              bloc.add(TasksDeleteRequested(
+                _selectedIds.toList(),
+                projectName: widget.project.name,
+                workspaceId: widget.project.workspaceId,
+                workspaceName: widget.workspaceName,
+              ));
               Navigator.pop(dialogContext);
               _clearSelection();
             },
@@ -610,7 +620,12 @@ class _TasksViewState extends State<_TasksView> {
         actions: [
           ElevatedButton(
             onPressed: () {
-              bloc.add(TaskDeleteRequested(task.id));
+              bloc.add(TaskDeleteRequested(
+                task.id,
+                projectName: widget.project.name,
+                workspaceId: widget.project.workspaceId,
+                workspaceName: widget.workspaceName,
+              ));
               Navigator.pop(dialogContext);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),

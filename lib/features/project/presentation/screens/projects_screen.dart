@@ -259,7 +259,9 @@ class _ProjectsViewState extends State<_ProjectsView> {
           } else {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => TasksScreen(project: project)),
+              MaterialPageRoute(
+                builder: (_) => TasksScreen(project: project, workspaceName: widget.workspace.name),
+              ),
             );
           }
         },

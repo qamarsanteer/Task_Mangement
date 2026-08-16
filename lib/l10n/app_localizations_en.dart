@@ -165,6 +165,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskRestored => 'Task restored';
 
   @override
+  String get taskDeletedForever => 'Task deleted forever';
+
+  @override
+  String binItemLocation(Object project, Object workspace) {
+    return '$project • $workspace';
+  }
+
+  @override
+  String daysRemaining(Object count) {
+    return '$count days left';
+  }
+
+  @override
+  String get lastDayRemaining => 'Last day before permanent deletion';
+
+  @override
+  String get retry => 'Retry';
+
+  @override
   String get areYouSureLogout => 'Are you sure you want to log out?';
 
   @override
@@ -485,4 +504,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get calendarPickDate => 'Pick a date';
+
+  @override
+  String get selectProjectLabel => 'Project';
+
+  @override
+  String get selectProjectHint => 'Select a project';
+
+  @override
+  String get selectWorkspaceHint => 'Select a workspace';
+
+  @override
+  String get noProjectsForTask =>
+      'You don\'t have any projects yet. Create a project first to add a task.';
+
+  @override
+  String get noProjectsInWorkspace =>
+      'This workspace has no projects yet. Create one first.';
+
+  @override
+  String get calendarDeleteTaskTooltip => 'Delete task';
 }

@@ -168,7 +168,12 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     final current = _currentTasks();
     emit(TaskLoaded(tasks: current, isMutating: true));
 
-    final result = await _deleteTaskUseCase(event.taskId);
+    final result = await _deleteTaskUseCase(
+      event.taskId,
+      projectName: event.projectName,
+      workspaceId: event.workspaceId,
+      workspaceName: event.workspaceName,
+    );
     result.fold(
       (failure) => emit(TaskError(message: failure.message, tasks: current)),
       (_) {
@@ -187,7 +192,12 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     String? errorMessage;
 
     for (final id in ids) {
-      final result = await _deleteTaskUseCase(id);
+      final result = await _deleteTaskUseCase(
+        id,
+        projectName: event.projectName,
+        workspaceId: event.workspaceId,
+        workspaceName: event.workspaceName,
+      );
       result.fold(
         (failure) => errorMessage = failure.message,
         (_) => updated = updated.where((t) => t.id != id).toList(),

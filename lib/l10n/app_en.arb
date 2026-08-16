@@ -106,6 +106,25 @@
   "@justNow": {},
   "taskRestored": "Task restored",
   "@taskRestored": {},
+  "taskDeletedForever": "Task deleted forever",
+  "@taskDeletedForever": {},
+  "binItemLocation": "{project} • {workspace}",
+  "@binItemLocation": {
+    "placeholders": {
+      "project": {},
+      "workspace": {}
+    }
+  },
+  "daysRemaining": "{count} days left",
+  "@daysRemaining": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "lastDayRemaining": "Last day before permanent deletion",
+  "@lastDayRemaining": {},
+  "retry": "Retry",
+  "@retry": {},
   "areYouSureLogout": "Are you sure you want to log out?",
   "@areYouSureLogout": {},
   "cancel": "Cancel",
@@ -323,5 +342,17 @@
   "calendarLoadError": "Couldn't load tasks. Pull down to refresh.",
   "@calendarLoadError": {},
   "calendarPickDate": "Pick a date",
-  "@calendarPickDate": {}
+  "@calendarPickDate": {},
+  "selectProjectLabel": "Project",
+  "@selectProjectLabel": {},
+  "selectProjectHint": "Select a project",
+  "@selectProjectHint": {},
+  "selectWorkspaceHint": "Select a workspace",
+  "@selectWorkspaceHint": {},
+  "noProjectsForTask": "You don't have any projects yet. Create a project first to add a task.",
+  "@noProjectsForTask": {},
+  "noProjectsInWorkspace": "This workspace has no projects yet. Create one first.",
+  "@noProjectsInWorkspace": {},
+  "calendarDeleteTaskTooltip": "Delete task",
+  "@calendarDeleteTaskTooltip": {}
 }

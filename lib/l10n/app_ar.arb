@@ -106,6 +106,25 @@
   "@justNow": {},
   "taskRestored": "تم استعادة المهمة",
   "@taskRestored": {},
+  "taskDeletedForever": "تم حذف المهمة نهائياً",
+  "@taskDeletedForever": {},
+  "binItemLocation": "{project} • {workspace}",
+  "@binItemLocation": {
+    "placeholders": {
+      "project": {},
+      "workspace": {}
+    }
+  },
+  "daysRemaining": "متبقي {count} يوم",
+  "@daysRemaining": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "lastDayRemaining": "آخر يوم قبل الحذف النهائي",
+  "@lastDayRemaining": {},
+  "retry": "إعادة المحاولة",
+  "@retry": {},
   "areYouSureLogout": "هل أنت متأكد أنك تريد تسجيل الخروج؟",
   "@areYouSureLogout": {},
   "cancel": "إلغاء",
@@ -323,5 +342,17 @@
 "calendarLoadError": "ما قدرنا نحمّل المهام. اسحبي للتحت للتحديث.",
 "@calendarLoadError": {},
 "calendarPickDate": "اختيار تاريخ",
-"@calendarPickDate": {}
+"@calendarPickDate": {},
+"selectProjectLabel": "المشروع",
+"@selectProjectLabel": {},
+"selectProjectHint": "اختر مشروع",
+"@selectProjectHint": {},
+"selectWorkspaceHint": "اختر ورك سبيس",
+"@selectWorkspaceHint": {},
+"noProjectsForTask": "ما في عندك ولا مشروع بعد. لازم تنشئ مشروع الأول حتى تضيف تاسك.",
+"@noProjectsForTask": {},
+"noProjectsInWorkspace": "ما في مشاريع بهاد الورك سبيس بعد. لازم تنشئي مشروع فيها الأول.",
+"@noProjectsInWorkspace": {},
+"calendarDeleteTaskTooltip": "حذف المهمة",
+"@calendarDeleteTaskTooltip": {}
 }

@@ -404,6 +404,36 @@ abstract class AppLocalizations {
   /// **'Task restored'**
   String get taskRestored;
 
+  /// No description provided for @taskDeletedForever.
+  ///
+  /// In en, this message translates to:
+  /// **'Task deleted forever'**
+  String get taskDeletedForever;
+
+  /// No description provided for @binItemLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'{project} • {workspace}'**
+  String binItemLocation(Object project, Object workspace);
+
+  /// No description provided for @daysRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} days left'**
+  String daysRemaining(Object count);
+
+  /// No description provided for @lastDayRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Last day before permanent deletion'**
+  String get lastDayRemaining;
+
+  /// No description provided for @retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retry;
+
   /// No description provided for @areYouSureLogout.
   ///
   /// In en, this message translates to:
@@ -1021,6 +1051,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pick a date'**
   String get calendarPickDate;
+
+  /// No description provided for @selectProjectLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get selectProjectLabel;
+
+  /// No description provided for @selectProjectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a project'**
+  String get selectProjectHint;
+
+  /// No description provided for @selectWorkspaceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a workspace'**
+  String get selectWorkspaceHint;
+
+  /// No description provided for @noProjectsForTask.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have any projects yet. Create a project first to add a task.'**
+  String get noProjectsForTask;
+
+  /// No description provided for @noProjectsInWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'This workspace has no projects yet. Create one first.'**
+  String get noProjectsInWorkspace;
+
+  /// No description provided for @calendarDeleteTaskTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete task'**
+  String get calendarDeleteTaskTooltip;
 }
 
 class _AppLocalizationsDelegate

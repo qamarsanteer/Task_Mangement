@@ -165,6 +165,25 @@ class AppLocalizationsAr extends AppLocalizations {
   String get taskRestored => 'تم استعادة المهمة';
 
   @override
+  String get taskDeletedForever => 'تم حذف المهمة نهائياً';
+
+  @override
+  String binItemLocation(Object project, Object workspace) {
+    return '$project • $workspace';
+  }
+
+  @override
+  String daysRemaining(Object count) {
+    return 'متبقي $count يوم';
+  }
+
+  @override
+  String get lastDayRemaining => 'آخر يوم قبل الحذف النهائي';
+
+  @override
+  String get retry => 'إعادة المحاولة';
+
+  @override
   String get areYouSureLogout => 'هل أنت متأكد أنك تريد تسجيل الخروج؟';
 
   @override
@@ -484,4 +503,24 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get calendarPickDate => 'اختيار تاريخ';
+
+  @override
+  String get selectProjectLabel => 'المشروع';
+
+  @override
+  String get selectProjectHint => 'اختر مشروع';
+
+  @override
+  String get selectWorkspaceHint => 'اختر ورك سبيس';
+
+  @override
+  String get noProjectsForTask =>
+      'ما في عندك ولا مشروع بعد. لازم تنشئ مشروع الأول حتى تضيف تاسك.';
+
+  @override
+  String get noProjectsInWorkspace =>
+      'ما في مشاريع بهاد الورك سبيس بعد. لازم تنشئي مشروع فيها الأول.';
+
+  @override
+  String get calendarDeleteTaskTooltip => 'حذف المهمة';
 }
