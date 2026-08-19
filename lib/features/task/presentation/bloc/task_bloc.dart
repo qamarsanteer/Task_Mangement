@@ -3,6 +3,7 @@ import '../../domain/entities/task_entity.dart';
 import '../../domain/usecases/create_task_usecase.dart';
 import '../../domain/usecases/delete_task_usecase.dart';
 import '../../domain/usecases/get_tasks_usecase.dart';
+import '../../domain/usecases/move_task_to_project_usecase.dart';
 import '../../domain/usecases/remove_task_attachment_usecase.dart';
 import '../../domain/usecases/update_task_status_usecase.dart';
 import '../../domain/usecases/update_task_usecase.dart';
@@ -18,6 +19,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   final UploadTaskAttachmentsUseCase _uploadTaskAttachmentsUseCase;
   final RemoveTaskAttachmentUseCase _removeTaskAttachmentUseCase;
   final DeleteTaskUseCase _deleteTaskUseCase;
+  final MoveTaskToProjectUseCase _moveTaskToProjectUseCase;
 
   TaskBloc({
     required GetTasksUseCase getTasksUseCase,
@@ -27,6 +29,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     required UploadTaskAttachmentsUseCase uploadTaskAttachmentsUseCase,
     required RemoveTaskAttachmentUseCase removeTaskAttachmentUseCase,
     required DeleteTaskUseCase deleteTaskUseCase,
+    required MoveTaskToProjectUseCase moveTaskToProjectUseCase,
   })  : _getTasksUseCase = getTasksUseCase,
         _createTaskUseCase = createTaskUseCase,
         _updateTaskStatusUseCase = updateTaskStatusUseCase,
@@ -34,6 +37,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         _uploadTaskAttachmentsUseCase = uploadTaskAttachmentsUseCase,
         _removeTaskAttachmentUseCase = removeTaskAttachmentUseCase,
         _deleteTaskUseCase = deleteTaskUseCase,
+        _moveTaskToProjectUseCase = moveTaskToProjectUseCase,
         super(TaskInitial()) {
     on<TasksLoadRequested>(_onTasksLoadRequested);
     on<TaskCreateRequested>(_onTaskCreateRequested);
@@ -43,6 +47,7 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     on<TaskAttachmentRemoveRequested>(_onTaskAttachmentRemoveRequested);
     on<TaskDeleteRequested>(_onTaskDeleteRequested);
     on<TasksDeleteRequested>(_onTasksDeleteRequested);
+    on<TaskMoveRequested>(_onTaskMoveRequested);
   }
 
   Future<void> _onTasksLoadRequested(TasksLoadRequested event, Emitter<TaskState> emit) async {
@@ -209,6 +214,26 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     } else {
       emit(TaskLoaded(tasks: updated));
     }
+  }
+
+  /// نقل التاسك لمشروع تاني (مستخدمة أساساً من شاشة الـ Inbox). بما إنه
+  /// projectId تبع التاسك بيتغيّر، التاسك ما عاد ينتمي للقائمة الحالية
+  /// (Inbox)، فمنشيله منها بعد نجاح النقل — تماماً متل منطق الحذف.
+  Future<void> _onTaskMoveRequested(TaskMoveRequested event, Emitter<TaskState> emit) async {
+    final current = _currentTasks();
+    emit(TaskLoaded(tasks: current, isMutating: true));
+
+    final result = await _moveTaskToProjectUseCase(
+      taskId: event.taskId,
+      newProjectId: event.newProjectId,
+    );
+    result.fold(
+      (failure) => emit(TaskError(message: failure.message, tasks: current)),
+      (_) {
+        final updated = current.where((t) => t.id != event.taskId).toList();
+        emit(TaskLoaded(tasks: updated));
+      },
+    );
   }
 
   List<TaskEntity> _currentTasks() {

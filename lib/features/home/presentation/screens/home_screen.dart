@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../calendar/presentation/screens/calendar_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
+import '../../../project/domain/entities/project_entity.dart';
+import '../../../task/presentation/screens/tasks_screen.dart';
 import '../../../workspace/presentation/screens/workspaces_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'cubit/navigation_cubit.dart';
+import '../../../../core/constants/inbox_constants.dart';
 import '../../../../l10n/app_localizations.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -54,33 +57,19 @@ class _HomeTabsState extends State<_HomeTabs> {
           index: currentIndex,
           children: [
             const WorkspacesScreen(),
-            _PlaceholderScreen(title: l10n.inbox, icon: Icons.inbox),
+            // تاب الـ Inbox: مش شاشة خاصة، هو أصلاً TasksScreen عادية بس
+            // بمشروع "وهمي" (pseudo-project) معرّفه kInboxProjectId وما
+            // إلو workspace حقيقي — هيك منستفيد من كل منطق إضافة/عرض/حذف
+            // التاسكات الجاهز بـ TasksScreen بدون ما نعيد كتابته من الصفر.
+            TasksScreen(
+              project: ProjectEntity(id: kInboxProjectId, name: l10n.inbox, workspaceId: ''),
+              workspaceName: l10n.inbox,
+            ),
             CalendarScreen(key: ValueKey(_calendarInstanceId)),
             const ProfileScreen(),
           ],
         );
       },
-    );
-  }
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  const _PlaceholderScreen({required this.title, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 80, color: isDark ? Colors.white24 : Colors.black12),
-          const SizedBox(height: 16),
-          Text(title, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white24 : Colors.black12)),
-        ],
-      ),
     );
   }
 }

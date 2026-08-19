@@ -35,6 +35,12 @@ abstract class TaskRemoteDataSource {
   Future<TaskModel> removeAttachment({required String taskId, required String attachmentUrl});
 
   Future<void> deleteTask(String taskId);
+
+  /// نقل التاسك لمشروع تاني عالسيرفر (أو الموك) — كانت ناقصة أصلاً،
+  /// وهيك moveTaskToProject بالـ Repository كان عم يعدّل الكاش المحلي
+  /// بس بدون ما يخبر السيرفر، فأي getTasks() جاي بعدها وهو أونلاين كان
+  /// عم يمسح التعديل ويرجّع التاسك لمكانه القديم.
+  Future<TaskModel> updateTaskProject({required String taskId, required String newProjectId});
 }
 
 class TaskRemoteDataSourceImpl implements TaskRemoteDataSource {
@@ -127,5 +133,13 @@ class TaskRemoteDataSourceImpl implements TaskRemoteDataSource {
   @override
   Future<void> deleteTask(String taskId) async {
     await _dioClient.delete('/tasks/$taskId');
+  }
+
+  @override
+  Future<TaskModel> updateTaskProject({required String taskId, required String newProjectId}) async {
+    final response = await _dioClient.put('/tasks/$taskId/project', data: {
+      'project_id': newProjectId,
+    });
+    return TaskModel.fromJson(response.data['data'] ?? response.data);
   }
 }

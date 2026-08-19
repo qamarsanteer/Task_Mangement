@@ -164,4 +164,35 @@ class TaskMockDataSource implements TaskRemoteDataSource {
       list.removeWhere((t) => t.id == taskId);
     }
   }
+
+  @override
+  Future<TaskModel> updateTaskProject({required String taskId, required String newProjectId}) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    for (final entry in _tasksByProject.entries) {
+      final index = entry.value.indexWhere((t) => t.id == taskId);
+      if (index != -1) {
+        final old = entry.value[index];
+        final moved = TaskModel(
+          id: old.id,
+          title: old.title,
+          description: old.description,
+          status: old.status,
+          isImportant: old.isImportant,
+          isUrgent: old.isUrgent,
+          dueDate: old.dueDate,
+          projectId: newProjectId,
+          createdAt: old.createdAt,
+          labelId: old.labelId,
+          attachmentUrls: old.attachmentUrls,
+          repeatFrequency: old.repeatFrequency,
+        );
+        // منشيله من قائمة مشروعه القديم (بما فيها الـ Inbox)...
+        entry.value.removeAt(index);
+        // ...ومنضيفه لقائمة المشروع الجديد.
+        _tasksByProject.putIfAbsent(newProjectId, () => []).add(moved);
+        return moved;
+      }
+    }
+    throw Exception('Task not found');
+  }
 }

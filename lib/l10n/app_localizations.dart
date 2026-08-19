@@ -1087,6 +1087,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete task'**
   String get calendarDeleteTaskTooltip;
+
+  /// No description provided for @moveToProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to Project'**
+  String get moveToProject;
+
+  /// No description provided for @taskMovedSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Task moved to \"{project}\"'**
+  String taskMovedSuccess(Object project);
+
+  /// No description provided for @inboxTaskOptionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What would you like to do with this task?'**
+  String get inboxTaskOptionsTitle;
 }
 
 class _AppLocalizationsDelegate

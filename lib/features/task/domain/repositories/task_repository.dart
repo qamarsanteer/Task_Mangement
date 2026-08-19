@@ -64,4 +64,13 @@ abstract class TaskRepository {
   /// حذف نهائي من السلة — هون بس بيصير نداء حذف حقيقي عالسيرفر
   /// (أو تسجيل عملية معلّقة لو الجهاز أوفلاين).
   Future<Either<Failure, void>> deleteTaskForever(String taskId);
+
+  /// منقل التاسك من المشروع (أو الـ Inbox) الحالي إلو، لمشروع تاني —
+  /// مستخدمة أساساً لما المستخدم يحدد مشروع لتاسك كان بالـ Inbox
+  /// (projectId = 'inbox'). التاسك نفسه بيضل بنفس المعرّف (id)، بس
+  /// projectId تبعو بيتغيّر، وبيصير يظهر بليستة المشروع الجديد.
+  Future<Either<Failure, TaskEntity>> moveTaskToProject({
+    required String taskId,
+    required String newProjectId,
+  });
 }

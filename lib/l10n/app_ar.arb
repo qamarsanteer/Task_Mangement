@@ -354,5 +354,13 @@
 "noProjectsInWorkspace": "ما في مشاريع بهاد الورك سبيس بعد. لازم تنشئي مشروع فيها الأول.",
 "@noProjectsInWorkspace": {},
 "calendarDeleteTaskTooltip": "حذف المهمة",
-"@calendarDeleteTaskTooltip": {}
+"@calendarDeleteTaskTooltip": {},
+"moveToProject": "نقل لمشروع",
+"@moveToProject": {},
+"taskMovedSuccess": "انتقلت المهمة لـ \"{project}\"",
+"@taskMovedSuccess": {
+  "placeholders": { "project": {} }
+},
+"inboxTaskOptionsTitle": "شو بدك تعمل بهاد التاسك؟",
+"@inboxTaskOptionsTitle": {}
 }

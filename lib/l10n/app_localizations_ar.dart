@@ -523,4 +523,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get calendarDeleteTaskTooltip => 'حذف المهمة';
+
+  @override
+  String get moveToProject => 'نقل لمشروع';
+
+  @override
+  String taskMovedSuccess(Object project) {
+    return 'انتقلت المهمة لـ \"$project\"';
+  }
+
+  @override
+  String get inboxTaskOptionsTitle => 'شو بدك تعمل بهاد التاسك؟';
 }

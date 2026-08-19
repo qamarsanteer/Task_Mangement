@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/colors.dart';
+import '../../../../core/constants/inbox_constants.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/utils/attachment_bytes_cache.dart';
 import '../../../../core/widgets/custom_text_field.dart';
@@ -117,6 +118,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
       final collected = <_TaskWithContext>[];
       final projectOptions = <_ProjectOption>[];
+
+      // الـ Inbox هو مشروع وهمي (kInboxProjectId) مش تابع لأي workspace
+      // حقيقي، فما بينجمع من حلقة workspace -> project تحت. لازم نجيب
+      // تاسكاته بشكل منفصل، وإلا تاسكات الـ Inbox يلي إلها due date
+      // ما رح تظهر أبداً بالكالندر.
+      final inboxTasksResult = await getIt<GetTasksUseCase>()(kInboxProjectId);
+      final inboxTasks = inboxTasksResult.fold((failure) => null, (list) => list);
+      if (inboxTasks != null && mounted) {
+        final inboxName = AppLocalizations.of(context)!.inbox;
+        for (final task in inboxTasks) {
+          collected.add(_TaskWithContext(
+            task: task,
+            projectId: kInboxProjectId,
+            projectName: inboxName,
+            workspaceId: '',
+            workspaceName: '',
+          ));
+        }
+      }
 
       for (final workspace in workspaces) {
         final projectsResult = await getIt<GetProjectsUseCase>()(workspace.id);
@@ -233,24 +253,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: AppBar(
         title: Text(l10n.calendar),
         actions: [
+          // زر البحث هون شكلي بس، متل زر البحث بشاشة Inbox/Project
+          // (ما في بحث فعلي مطبّق بالتطبيق حالياً بأي واجهة).
+          IconButton(icon: const Icon(Icons.search), onPressed: () => _showComingSoon(context, l10n)),
           if (!isToday)
             TextButton(
               onPressed: _goToToday,
               child: Text(l10n.today),
             ),
-          IconButton(
-            icon: const Icon(Icons.event_outlined),
-            tooltip: l10n.calendarPickDate,
-            onPressed: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _selectedDate,
-                firstDate: DateTime(2000),
-                lastDate: DateTime(2100),
-              );
-              if (picked != null) _selectDate(picked);
-            },
-          ),
         ],
       ),
       body: RefreshIndicator(
@@ -268,13 +278,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ..._buildTasksSlivers(context, l10n),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddTaskDialog(context, l10n),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
-        label: Text(l10n.addTask),
       ),
     );
   }
@@ -488,14 +491,56 @@ class _CalendarScreenState extends State<CalendarScreen> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
+                // آخر عنصر بالليستة هو تايل "إضافة تاسك" (نفس شكل وسلوك
+                // Inbox/Project)، مش أول عنصرين متل السابق.
+                if (index == tasks.length * 2) {
+                  return _buildAddTaskTile(context, l10n);
+                }
                 if (index.isOdd) return const SizedBox(height: 12);
                 return _buildTaskTile(context, l10n, tasks[index ~/ 2]);
               },
-              childCount: tasks.length * 2 - 1,
+              // tasks.length عناصر + tasks.length فواصل بينهم + فاصل قبل
+              // تايل الإضافة + تايل الإضافة نفسه.
+              childCount: tasks.length * 2 + 1,
             ),
           ),
         ),
     ];
+  }
+
+  /// تايل "إضافة تاسك" بمنتصف الشاشة (Inline)، بنفس شكل وسلوك تايل
+  /// الإضافة الموجود بشاشة Inbox/Project (tasks_screen.dart) —
+  /// بدل الـ FloatingActionButton السابق يلي كان بأسفل يمين الشاشة.
+  Widget _buildAddTaskTile(BuildContext context, AppLocalizations l10n) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => _showAddTaskDialog(context, l10n),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          border: Border.all(color: AppColors.primary.withOpacity(0.4), width: 1.5),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.add_circle_outline, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text(l10n.addTask, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showComingSoon(BuildContext context, AppLocalizations l10n) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l10n.comingSoon),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
@@ -518,18 +563,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 13, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
             ),
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: () => _showAddTaskDialog(context, l10n),
-              icon: const Icon(Icons.add),
-              label: Text(l10n.addTask),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-            ),
+            const SizedBox(height: 24),
+            // زر "إضافة تاسك" لازم يضل موجود هون كمان، لأنه لما شلنا
+            // الـ FloatingActionButton صار هاد التايل الإنلاين هو الطريقة
+            // الوحيدة لإضافة تاسك من شاشة الكالندر (متل حالة عدم وجود
+            // تاسكات بشاشة Inbox/Project).
+            SizedBox(width: double.infinity, child: _buildAddTaskTile(context, l10n)),
           ],
         ),
       ),

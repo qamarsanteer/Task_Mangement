@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/cache/local_cache_service.dart';
 import '../../../../core/error/dio_error_mapper.dart';
 import '../../../../core/error/failure.dart';
+import '../../../../core/events/task_changes_bus.dart';
 import '../../../../core/network/connectivity_service.dart';
 import '../../../../core/sync/syncable.dart';
 import '../../domain/entities/task_entity.dart';
@@ -13,40 +14,46 @@ import '../models/task_model.dart';
 
 class TaskRepositoryImpl implements TaskRepository, Syncable {
   static const _pendingOpsKey = 'pending_task_ops';
-  // فهرس صغير: taskId → projectId، حتى نعرف من أي كاش نمسح/نحدّث التاسك
-  // (بما إنه updateTaskStatus وdeleteTask بياخدوا taskId بس).
   static const _indexKey = 'task_project_index';
-  // كاش سلة المحذوفات — لقطة (snapshot) كاملة لكل تاسك محذوف مؤقتاً
-  // (التاسك نفسه + اسم المشروع/الـ workspace وقت الحذف + تاريخ الحذف).
   static const _binCacheKey = 'cache_deleted_tasks';
 
   final TaskRemoteDataSource _remoteDataSource;
   final LocalCacheService _cache;
   final ConnectivityService _connectivityService;
+  final TaskChangesBus _taskChangesBus;
 
   TaskRepositoryImpl({
     required TaskRemoteDataSource remoteDataSource,
     required LocalCacheService cache,
     required ConnectivityService connectivityService,
+    required TaskChangesBus taskChangesBus,
   })  : _remoteDataSource = remoteDataSource,
         _cache = cache,
-        _connectivityService = connectivityService;
+        _connectivityService = connectivityService,
+        _taskChangesBus = taskChangesBus;
 
   String _cacheKey(String projectId) => 'cache_tasks_$projectId';
 
-  @override
+    @override
   Future<Either<Failure, List<TaskEntity>>> getTasks(String projectId) async {
     final isConnected = await _connectivityService.isConnected;
 
     if (isConnected) {
       try {
         final tasks = await _remoteDataSource.getTasks(projectId);
+        // الحذف المؤقت (move-to-bin) عملية محلية 100% وما بتوصل عالسيرفر
+        // إطلاقاً (شوفي تعليق deleteTask تحت)، فالسيرفر لسا شايف هيك
+        // تاسكات كأنها موجودة عادي بمشروعها. لازم نستثنيهم هون يدوياً
+        // وإلا أي تاسك بالسلة (محذوف مؤقتاً بس لسا ما استرجعه المستخدم)
+        // كان رح "يرجع لوحده" لقائمة المشروع أول ما نعمل fetch أونلاين.
+        final binnedIds = await _binnedTaskIds();
+        final filtered = tasks.where((t) => !binnedIds.contains(t.id)).toList();
         await _cache.saveList(
           _cacheKey(projectId),
-          tasks.map((t) => (t as TaskModel).toJson()).toList(),
+          filtered.map((t) => (t as TaskModel).toJson()).toList(),
         );
-        await _indexTasks(projectId, tasks.map((t) => t.id));
-        return Right(tasks);
+        await _indexTasks(projectId, filtered.map((t) => t.id));
+        return Right(filtered);
       } on DioException catch (e) {
         return _readCachedList(projectId) ?? Left(DioErrorMapper.map(e));
       } catch (e) {
@@ -56,6 +63,11 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
 
     return _readCachedList(projectId) ??
         const Left(NetworkFailure('لا يوجد اتصال بالإنترنت ولا بيانات محفوظة محلياً.'));
+  }
+
+  Future<Set<String>> _binnedTaskIds() async {
+    final entries = await _readBinList();
+    return entries.map((e) => e.task.id).toSet();
   }
 
   @override
@@ -390,6 +402,13 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       deletedAt: DateTime.now(),
     ));
 
+    // منبلّغ أي شاشة/Bloc تاني حي بالذاكرة (متل تاب الـ Inbox المحفوظ
+    // بالـ IndexedStack) إنه لازم يعيد تحميل قائمته فوراً — وإلا هيك
+    // شاشة كانت رح تضل عارضة نسخة قديمة عن التاسك (قبل الحذف)، ولو
+    // المستخدم حاول يحذفه منها كمان كان رح ياخد خطأ "غير موجود بالكاش"
+    // لأنه أصلاً انمسح من الفهرس بالسطر فوق. نفس منطق restoreTask تماماً.
+    _taskChangesBus.notifyProjectChanged(projectId);
+
     return const Right(null);
   }
 
@@ -434,6 +453,13 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     await _indexTasks(projectId, [taskId]);
 
     await _removeFromBin(taskId);
+
+    // منبلّغ أي شاشة/Bloc تاني حي بالذاكرة (متل تاب الـ Inbox المحفوظ
+    // بالـ IndexedStack) إنه لازم يعيد تحميل قائمته، لأنه احتمال كبير
+    // نحن جايين من شاشة تانية كليًا (BinScreen) وما في أي طريقة تانية
+    // توصّل الخبر للـ Bloc القديم.
+    _taskChangesBus.notifyProjectChanged(projectId);
+
     return Right(entry.task);
   }
 
@@ -491,6 +517,76 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     await _removeFromBin(taskId);
     await _addPendingOp({'type': 'delete', 'id': taskId});
     return const Right(null);
+  }
+
+    @override
+  Future<Either<Failure, TaskEntity>> moveTaskToProject({
+    required String taskId,
+    required String newProjectId,
+  }) async {
+    final oldProjectId = await _lookupProjectId(taskId);
+    if (oldProjectId == null) {
+      return const Left(NetworkFailure('التاسك غير موجود بالكاش.'));
+    }
+
+    final oldList = _cache.getList(_cacheKey(oldProjectId)) ?? [];
+    final index = oldList.indexWhere((t) => t['id'] == taskId);
+    if (index == -1) {
+      return const Left(NetworkFailure('التاسك غير موجود بالكاش.'));
+    }
+
+    if (oldProjectId == newProjectId) {
+      return Right(TaskModel.fromJson(oldList[index]));
+    }
+
+    final isConnected = await _connectivityService.isConnected;
+    final isLocalOnly = taskId.startsWith('local_');
+
+    // ⚠️ كان هون البلاء: كنا منعدّل الكاش المحلي بس وما كنا منخبر
+    // السيرفر (أو الموك) إطلاقاً بالنقل. فأول getTasks() جاي بعدها
+    // وهو أونلاين كان عم يجيب القائمة "الرسمية" من السيرفر (يلي لسا
+    // شايفة التاسك بمشروعه القديم) وعم يمسح فوقها التعديل المحلي،
+    // فالتاسك كان عم يرجع يظهر بالـ Inbox وكأنه ما انتقل أبداً.
+    if (isConnected && !isLocalOnly) {
+      try {
+        await _remoteDataSource.updateTaskProject(taskId: taskId, newProjectId: newProjectId);
+      } on DioException catch (e) {
+        return Left(DioErrorMapper.map(e));
+      } catch (e) {
+        return Left(UnknownFailure(e.toString()));
+      }
+    }
+
+    final movedJson = {...oldList[index], 'project_id': newProjectId};
+
+    oldList.removeAt(index);
+    await _cache.saveList(_cacheKey(oldProjectId), oldList);
+
+    final newList = _cache.getList(_cacheKey(newProjectId)) ?? [];
+    newList.add(movedJson);
+    await _cache.saveList(_cacheKey(newProjectId), newList);
+
+    await _indexTasks(newProjectId, [taskId]);
+
+    if (isLocalOnly) {
+      final ops = _cache.getList(_pendingOpsKey) ?? [];
+      final opIndex = ops.indexWhere((op) => op['type'] == 'create' && op['tempId'] == taskId);
+      if (opIndex != -1) {
+        ops[opIndex] = {...ops[opIndex], 'projectId': newProjectId};
+        await _cache.saveList(_pendingOpsKey, ops);
+      }
+    } else if (!isConnected) {
+      // أوفلاين وتاسك حقيقي (مش local_): منسجّل عملية نقل معلّقة حتى
+      // تتبعت للسيرفر لما يرجع الاتصال (نفس آلية باقي العمليات).
+      await _addPendingOp({'type': 'move', 'id': taskId, 'newProjectId': newProjectId});
+    }
+
+    // منبلّغ أي شاشة/Bloc تاني حي بالذاكرة (بالمشروع القديم أو الجديد)
+    // إنه لازم يعيد تحميل قائمته.
+    _taskChangesBus.notifyProjectChanged(oldProjectId);
+    _taskChangesBus.notifyProjectChanged(newProjectId);
+
+    return Right(TaskModel.fromJson(movedJson));
   }
 
   // ─── Syncable ───
@@ -557,6 +653,13 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
 
           case 'delete':
             await _remoteDataSource.deleteTask(op['id'] as String);
+            break;
+
+          case 'move':
+            await _remoteDataSource.updateTaskProject(
+              taskId: op['id'] as String,
+              newProjectId: op['newProjectId'] as String,
+            );
             break;
         }
       } catch (_) {

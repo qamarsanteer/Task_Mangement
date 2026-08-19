@@ -116,6 +116,16 @@ class TaskDeleteRequested extends TaskEvent {
   List<Object?> get props => [taskId, projectName, workspaceId, workspaceName];
 }
 
+/// طلب نقل التاسك من المشروع (أو الـ Inbox) الحالي إلو لمشروع تاني —
+/// مستخدمة أساساً من شاشة الـ Inbox لما المستخدم يحدد مشروع لتاسك.
+class TaskMoveRequested extends TaskEvent {
+  final String taskId;
+  final String newProjectId;
+  const TaskMoveRequested({required this.taskId, required this.newProjectId});
+  @override
+  List<Object?> get props => [taskId, newProjectId];
+}
+
 class TasksDeleteRequested extends TaskEvent {
   final List<String> taskIds;
   final String projectName;

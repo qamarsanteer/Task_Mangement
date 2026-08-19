@@ -10,6 +10,10 @@ import '../storage/token_storage.dart';
 import '../storage/app_preferences.dart';
 import '../bloc/theme/theme_bloc.dart';
 import '../bloc/locale/locale_bloc.dart';
+import '../network/dio_client.dart';
+import '../network/connectivity_service.dart';
+import '../cache/local_cache_service.dart';
+import '../events/task_changes_bus.dart';
 
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/datasources/auth_mock_data_source.dart';
@@ -53,6 +57,7 @@ import '../../features/task/domain/usecases/upload_task_attachments_usecase.dart
 import '../../features/task/domain/usecases/remove_task_attachment_usecase.dart';
 import '../../features/task/domain/usecases/update_task_status_usecase.dart';
 import '../../features/task/domain/usecases/update_task_usecase.dart';
+import '../../features/task/domain/usecases/move_task_to_project_usecase.dart';
 
 import '../../features/bin/data/repositories/bin_repository_impl.dart';
 import '../../features/bin/domain/repositories/bin_repository.dart';
@@ -77,6 +82,7 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton(() => AppPreferences(getIt()));
   getIt.registerLazySingleton(() => ConnectivityService());
   getIt.registerLazySingleton(() => LocalCacheService(getIt()));
+  getIt.registerLazySingleton(() => TaskChangesBus()); 
 
   // ---------- Core Blocs (theme / locale) ----------
   getIt.registerFactory(() => ThemeBloc(appPreferences: getIt()));
@@ -186,6 +192,7 @@ Future<void> setupServiceLocator() async {
     remoteDataSource: getIt(),
     cache: getIt(),
     connectivityService: getIt(),
+    taskChangesBus: getIt(),
   );
   getIt.registerLazySingleton<TaskRepository>(() => taskRepository);
 
@@ -197,6 +204,7 @@ Future<void> setupServiceLocator() async {
   getIt.registerLazySingleton(() => DeleteTaskUseCase(getIt()));
   getIt.registerLazySingleton(() => UploadTaskAttachmentsUseCase(getIt()));
   getIt.registerLazySingleton(() => RemoveTaskAttachmentUseCase(getIt()));
+  getIt.registerLazySingleton(() => MoveTaskToProjectUseCase(getIt()));
 
   // ---------- Task: Bloc ----------
   getIt.registerFactory(
@@ -208,6 +216,7 @@ Future<void> setupServiceLocator() async {
       uploadTaskAttachmentsUseCase: getIt(),
       removeTaskAttachmentUseCase: getIt(),
       deleteTaskUseCase: getIt(),
+      moveTaskToProjectUseCase: getIt(),
     ),
   );
 

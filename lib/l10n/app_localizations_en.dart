@@ -524,4 +524,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get calendarDeleteTaskTooltip => 'Delete task';
+
+  @override
+  String get moveToProject => 'Move to Project';
+
+  @override
+  String taskMovedSuccess(Object project) {
+    return 'Task moved to \"$project\"';
+  }
+
+  @override
+  String get inboxTaskOptionsTitle =>
+      'What would you like to do with this task?';
 }

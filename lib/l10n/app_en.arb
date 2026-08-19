@@ -354,5 +354,13 @@
   "noProjectsInWorkspace": "This workspace has no projects yet. Create one first.",
   "@noProjectsInWorkspace": {},
   "calendarDeleteTaskTooltip": "Delete task",
-  "@calendarDeleteTaskTooltip": {}
+  "@calendarDeleteTaskTooltip": {},
+  "moveToProject": "Move to Project",
+  "@moveToProject": {},
+  "taskMovedSuccess": "Task moved to \"{project}\"",
+  "@taskMovedSuccess": {
+    "placeholders": { "project": {} }
+  },
+  "inboxTaskOptionsTitle": "What would you like to do with this task?",
+  "@inboxTaskOptionsTitle": {}
 }
