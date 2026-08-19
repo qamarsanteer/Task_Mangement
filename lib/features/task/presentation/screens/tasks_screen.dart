@@ -9,6 +9,7 @@ import '../../../../core/di/service_locator.dart';
 import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../core/widgets/segmented_toggle.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../calendar/presentation/screens/project_calendar_screen.dart';
 import '../../../project/domain/entities/project_entity.dart';
 import '../../../project/domain/usecases/get_projects_usecase.dart';
 import '../../../workspace/domain/entities/workspace_entity.dart';
@@ -913,7 +914,22 @@ class _TasksViewState extends State<_TasksView> {
               ListTile(leading: const Icon(Icons.check, color: AppColors.primary), title: Text(l10n.viewList), onTap: () => Navigator.pop(sheetContext)),
               ListTile(leading: const Icon(Icons.view_column_outlined), title: Text(l10n.viewBoard), onTap: () { Navigator.pop(sheetContext); _showComingSoon(context, l10n); }),
               ListTile(leading: const Icon(Icons.view_timeline_outlined), title: Text(l10n.viewTimeline), onTap: () { Navigator.pop(sheetContext); _showComingSoon(context, l10n); }),
-              ListTile(leading: const Icon(Icons.calendar_month_outlined), title: Text(l10n.viewCalendar), onTap: () { Navigator.pop(sheetContext); _showComingSoon(context, l10n); }),
+              ListTile(
+                leading: const Icon(Icons.calendar_month_outlined),
+                title: Text(l10n.viewCalendar),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProjectCalendarScreen(
+                        project: widget.project,
+                        workspaceName: widget.workspaceName,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ],
           ),
         ),

@@ -99,6 +99,7 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
         current.add((task as TaskModel).toJson());
         await _cache.saveList(_cacheKey(projectId), current);
         await _indexTasks(projectId, [task.id]);
+        _taskChangesBus.notifyProjectChanged(projectId);
         return Right(task);
       } on DioException catch (e) {
         return Left(DioErrorMapper.map(e));
@@ -138,6 +139,7 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       'labelId': labelId,
       'repeatFrequency': TaskModel.repeatToString(repeatFrequency),
     });
+    _taskChangesBus.notifyProjectChanged(projectId);
     return Right(localTask);
   }
 
@@ -153,6 +155,7 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       try {
         final task = await _remoteDataSource.updateTaskStatus(taskId: taskId, status: status);
         await _updateCachedStatus(taskId, status);
+        _taskChangesBus.notifyProjectChanged(task.projectId);
         return Right(task);
       } on DioException catch (e) {
         return Left(DioErrorMapper.map(e));
@@ -172,6 +175,12 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     } else {
       await _addPendingOp({'type': 'updateStatus', 'id': taskId, 'status': TaskModel.statusToString(status)});
     }
+    // منبلّغ أي Bloc/شاشة تانية حية بالذاكرة (متل تاب الـ Inbox المحفوظ
+    // بالـ IndexedStack) إنه لازم يعيد تحميل قائمته — تماماً متل منطق
+    // create/delete/restore/move. بدون هيدا، تغيير الحالة من شاشة تانية
+    // (متل الكالندر، يلي إلها TaskBloc خاص فيها غير Bloc الـ Inbox) ما
+    // رح ينعكس بالـ Inbox لحد ما تنعاد بناء الشاشة من الصفر.
+    _taskChangesBus.notifyProjectChanged(updated.projectId);
     return Right(updated);
   }
 
@@ -211,6 +220,7 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
           labelId: labelId,
           repeatFrequency: repeatFrequency,
         );
+        _taskChangesBus.notifyProjectChanged(task.projectId);
         return Right(task);
       } on DioException catch (e) {
         return Left(DioErrorMapper.map(e));
@@ -261,6 +271,12 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
         'repeatFrequency': TaskModel.repeatToString(repeatFrequency),
       });
     }
+    // منبلّغ أي Bloc/شاشة تانية حية بالذاكرة (متل تاب الـ Inbox المحفوظ
+    // بالـ IndexedStack) إنه لازم يعيد تحميل قائمته — تماماً متل منطق
+    // create/delete/restore/move. بدون هيدا، تعديل تاسك من شاشة تانية
+    // (متل الكالندر، يلي إلها TaskBloc خاص فيها غير Bloc الـ Inbox) ما
+    // رح ينعكس بالـ Inbox لحد ما تنعاد بناء الشاشة من الصفر.
+    _taskChangesBus.notifyProjectChanged(updated.projectId);
     return Right(updated);
   }
 
