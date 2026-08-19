@@ -362,5 +362,15 @@
     "placeholders": { "project": {} }
   },
   "inboxTaskOptionsTitle": "What would you like to do with this task?",
-  "@inboxTaskOptionsTitle": {}
+  "@inboxTaskOptionsTitle": {},
+  "boardView": "Board View",
+  "eisenhowerDoFirst": "Important & Urgent",
+  "eisenhowerPlan": "Important & Not Urgent",
+  "eisenhowerDelegate": "Not Important & Urgent",
+  "eisenhowerEliminate": "Not Important & Not Urgent",
+  "doItNow": "Do it now",
+  "planIt": "Plan it",
+  "delegateIt": "Delegate it",
+  "later": "Later",
+  "boardColumnEmpty": "No tasks in this section"
 }

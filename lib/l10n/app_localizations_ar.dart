@@ -534,4 +534,34 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get inboxTaskOptionsTitle => 'شو بدك تعمل بهاد التاسك؟';
+
+  @override
+  String get boardView => 'عرض اللوحة';
+
+  @override
+  String get eisenhowerDoFirst => 'مهم وعاجل';
+
+  @override
+  String get eisenhowerPlan => 'مهم وغير عاجل';
+
+  @override
+  String get eisenhowerDelegate => 'غير مهم وعاجل';
+
+  @override
+  String get eisenhowerEliminate => 'غير مهم وغير عاجل';
+
+  @override
+  String get doItNow => 'افعله الآن';
+
+  @override
+  String get planIt => 'خطّط له';
+
+  @override
+  String get delegateIt => 'فوّضه';
+
+  @override
+  String get later => 'لاحقاً';
+
+  @override
+  String get boardColumnEmpty => 'لا توجد مهام في هذا القسم';
 }

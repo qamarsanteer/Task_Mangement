@@ -21,6 +21,7 @@ import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
 import 'task_detail_screen.dart';
+import 'board_view_screen.dart';
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -912,7 +913,25 @@ class _TasksViewState extends State<_TasksView> {
               Text(l10n.selectView, style: Theme.of(sheetContext).textTheme.titleLarge),
               const SizedBox(height: 8),
               ListTile(leading: const Icon(Icons.check, color: AppColors.primary), title: Text(l10n.viewList), onTap: () => Navigator.pop(sheetContext)),
-              ListTile(leading: const Icon(Icons.view_column_outlined), title: Text(l10n.viewBoard), onTap: () { Navigator.pop(sheetContext); _showComingSoon(context, l10n); }),
+              ListTile(
+                leading: const Icon(Icons.dashboard_outlined),
+                title: Text(l10n.boardView), // أو النص الخاص بـ Board View عندك
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BlocProvider.value(
+                        value: context.read<TaskBloc>(),
+                        child: BoardViewScreen(
+                          project: widget.project,
+                          workspaceName: widget.workspaceName,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
               ListTile(leading: const Icon(Icons.view_timeline_outlined), title: Text(l10n.viewTimeline), onTap: () { Navigator.pop(sheetContext); _showComingSoon(context, l10n); }),
               ListTile(
                 leading: const Icon(Icons.calendar_month_outlined),

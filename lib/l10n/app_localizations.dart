@@ -1105,6 +1105,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'What would you like to do with this task?'**
   String get inboxTaskOptionsTitle;
+
+  /// No description provided for @boardView.
+  ///
+  /// In en, this message translates to:
+  /// **'Board View'**
+  String get boardView;
+
+  /// No description provided for @eisenhowerDoFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Important & Urgent'**
+  String get eisenhowerDoFirst;
+
+  /// No description provided for @eisenhowerPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Important & Not Urgent'**
+  String get eisenhowerPlan;
+
+  /// No description provided for @eisenhowerDelegate.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Important & Urgent'**
+  String get eisenhowerDelegate;
+
+  /// No description provided for @eisenhowerEliminate.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Important & Not Urgent'**
+  String get eisenhowerEliminate;
+
+  /// No description provided for @doItNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Do it now'**
+  String get doItNow;
+
+  /// No description provided for @planIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan it'**
+  String get planIt;
+
+  /// No description provided for @delegateIt.
+  ///
+  /// In en, this message translates to:
+  /// **'Delegate it'**
+  String get delegateIt;
+
+  /// No description provided for @later.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get later;
+
+  /// No description provided for @boardColumnEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks in this section'**
+  String get boardColumnEmpty;
 }
 
 class _AppLocalizationsDelegate

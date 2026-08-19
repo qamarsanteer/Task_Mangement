@@ -362,5 +362,15 @@
   "placeholders": { "project": {} }
 },
 "inboxTaskOptionsTitle": "شو بدك تعمل بهاد التاسك؟",
-"@inboxTaskOptionsTitle": {}
+"@inboxTaskOptionsTitle": {},
+"boardView": "عرض اللوحة",
+  "eisenhowerDoFirst": "مهم وعاجل",
+  "eisenhowerPlan": "مهم وغير عاجل",
+  "eisenhowerDelegate": "غير مهم وعاجل",
+  "eisenhowerEliminate": "غير مهم وغير عاجل",
+  "doItNow": "افعله الآن",
+  "planIt": "خطّط له",
+  "delegateIt": "فوّضه",
+  "later": "لاحقاً",
+  "boardColumnEmpty": "لا توجد مهام في هذا القسم"
 }

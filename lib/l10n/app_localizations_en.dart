@@ -536,4 +536,34 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get inboxTaskOptionsTitle =>
       'What would you like to do with this task?';
+
+  @override
+  String get boardView => 'Board View';
+
+  @override
+  String get eisenhowerDoFirst => 'Important & Urgent';
+
+  @override
+  String get eisenhowerPlan => 'Important & Not Urgent';
+
+  @override
+  String get eisenhowerDelegate => 'Not Important & Urgent';
+
+  @override
+  String get eisenhowerEliminate => 'Not Important & Not Urgent';
+
+  @override
+  String get doItNow => 'Do it now';
+
+  @override
+  String get planIt => 'Plan it';
+
+  @override
+  String get delegateIt => 'Delegate it';
+
+  @override
+  String get later => 'Later';
+
+  @override
+  String get boardColumnEmpty => 'No tasks in this section';
 }
