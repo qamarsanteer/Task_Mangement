@@ -96,7 +96,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get requiredField => 'This field is required';
 
   @override
-  String get invalidEmail => 'Please enter a valid email';
+  String get invalidEmail => 'Please enter a valid email address';
 
   @override
   String get passwordMismatch => 'Passwords do not match';
@@ -260,6 +260,47 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectNameHint => 'Enter project name';
+
+  @override
+  String get projectDescriptionLabel => 'Description (optional)';
+
+  @override
+  String get projectDescriptionHint => 'Add more details about the project';
+
+  @override
+  String get progressLabel => 'Progress';
+
+  @override
+  String get membersLabel => 'Members';
+
+  @override
+  String get overdueLabel => 'Overdue';
+
+  @override
+  String get notStartedLabel => 'Not started';
+
+  @override
+  String get inProgressLabel => 'In progress';
+
+  @override
+  String get completedLabel => 'Completed';
+
+  @override
+  String get noDescriptionAdded => 'No description added';
+
+  @override
+  String get noMembersYet => 'No members yet';
+
+  @override
+  String get noTasksYet => 'No tasks yet';
+
+  @override
+  String get pendingInviteLabel => 'Pending';
+
+  @override
+  String tasksCountLabel(Object count) {
+    return '$count tasks';
+  }
 
   @override
   String get deleteProjectTitle => 'Delete Project';
@@ -566,4 +607,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get boardColumnEmpty => 'No tasks in this section';
+
+  @override
+  String get inviteMember => 'Invite Member';
+
+  @override
+  String get projectProperties => 'Properties';
+
+  @override
+  String get permissionLabel => 'Permission';
+
+  @override
+  String get permissionReadOnly => 'Read only';
+
+  @override
+  String get permissionReadWrite => 'Read & write';
+
+  @override
+  String get send => 'Send';
+
+  @override
+  String inviteSentMessage(String email) {
+    return 'Invitation sent to $email';
+  }
 }

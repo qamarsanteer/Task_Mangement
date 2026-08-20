@@ -5,82 +5,45 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/constants/colors.dart';
-import '../../../../core/constants/inbox_constants.dart';
 import '../../../../core/di/service_locator.dart';
 import '../../../../core/utils/attachment_bytes_cache.dart';
 import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../core/widgets/segmented_toggle.dart';
 import '../../../../l10n/app_localizations.dart';
-import '../../../project/domain/usecases/get_projects_usecase.dart';
 import '../../../task/domain/entities/task_entity.dart';
 import '../../../task/domain/entities/task_label.dart';
-import '../../../task/domain/usecases/create_task_usecase.dart';
-import '../../../task/domain/usecases/delete_task_usecase.dart';
-import '../../../task/domain/usecases/get_tasks_usecase.dart';
-import '../../../task/domain/usecases/upload_task_attachments_usecase.dart';
 import '../../../task/presentation/bloc/task_bloc.dart';
 import '../../../task/presentation/bloc/task_event.dart';
 import '../../../task/presentation/screens/task_detail_screen.dart';
-import '../../../workspace/domain/entities/workspace_entity.dart';
-import '../../../workspace/domain/usecases/get_workspaces_usecase.dart';
+import '../../domain/entities/project_option.dart';
+import '../../domain/entities/task_with_context.dart';
+import '../bloc/calendar_bloc.dart';
+import '../bloc/calendar_event.dart';
+import '../bloc/calendar_state.dart';
 
-/// تاسك مع سياقه (بأي مشروع وبأي ورك سبيس هو)، حتى نقدر نعرضه بشاشة
-/// الكالندر يلي بتجمع تاسكات من كل المشاريع/الورك سبيسات مع بعض.
-class _TaskWithContext {
-  final TaskEntity task;
-  final String projectId;
-  final String projectName;
-  final String workspaceId;
-  final String workspaceName;
-
-  const _TaskWithContext({
-    required this.task,
-    required this.projectId,
-    required this.projectName,
-    required this.workspaceId,
-    required this.workspaceName,
-  });
-}
-
-/// مشروع (مع الورك سبيس يلي هو تابع إلها) نعرضه بقائمة اختيار المشروع
-/// بديالوج "إضافة تاسك" — منجمعها مسبقاً وقت تحميل تاسكات الكالندر
-/// حتى ما نضطر نعيد نداء الـ API وقت ما المستخدم بس يفتح الديالوج.
-class _ProjectOption {
-  final String projectId;
-  final String projectName;
-  final String workspaceId;
-  final String workspaceName;
-
-  const _ProjectOption({
-    required this.projectId,
-    required this.projectName,
-    required this.workspaceId,
-    required this.workspaceName,
-  });
-}
-
-class CalendarScreen extends StatefulWidget {
+class CalendarScreen extends StatelessWidget {
   const CalendarScreen({super.key});
 
   @override
-  State<CalendarScreen> createState() => _CalendarScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => getIt<CalendarBloc>(),
+      child: const _CalendarView(),
+    );
+  }
 }
 
-class _CalendarScreenState extends State<CalendarScreen> {
+class _CalendarView extends StatefulWidget {
+  const _CalendarView();
+
+  @override
+  State<_CalendarView> createState() => _CalendarViewState();
+}
+
+class _CalendarViewState extends State<_CalendarView> {
   late DateTime _selectedDate;
   late DateTime _displayedMonth;
-
-  bool _isLoading = true;
-  bool _hasError = false;
-  List<_TaskWithContext> _allTasks = [];
-  // كل الورك سبيسات (حتى الفاضية من مشاريع) — منستخدمها لملء أول دروب
-  // داون بديالوج "إضافة تاسك". لازم تكون مصدرها GetWorkspacesUseCase
-  // مباشرة، مش مشتقة من _projectOptions، وإلا أي ورك سبيس ما عندها
-  // مشروع بعد كانت رح تختفي بالكامل من القائمة.
-  List<WorkspaceEntity> _workspaces = [];
-  // كل المشاريع (بكل الورك سبيسات) — منستخدمها لملء قائمة اختيار
-  // المشروع بديالوج "إضافة تاسك"، منجمعها مرة وحدة وقت تحميل الكالندر.
-  List<_ProjectOption> _projectOptions = [];
+  bool _tasksLoaded = false;   // عشان ما نعيد التحميل كل مرة تتغير فيها الـ dependencies
 
   @override
   void initState() {
@@ -88,110 +51,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final now = DateTime.now();
     _selectedDate = DateTime(now.year, now.month, now.day);
     _displayedMonth = DateTime(now.year, now.month, 1);
-    _loadAllTasks();
+    // شيلنا _loadTasks() من هون
   }
 
-  /// منجيب كل الورك سبيسات، وبكل وحدة فيهم كل المشاريع، وبكل مشروع كل
-  /// التاسكات — وهيك منضمن إنو الكالندر بيشوف تاسكات المستخدم كلها،
-  /// مهما كان المشروع أو الورك سبيس يلي هي فيه.
-  Future<void> _loadAllTasks() async {
-    setState(() {
-      _isLoading = true;
-      _hasError = false;
-    });
-
-    try {
-      final workspacesResult = await getIt<GetWorkspacesUseCase>()();
-
-      final workspaces = workspacesResult.fold(
-        (failure) => null,
-        (list) => list,
-      );
-
-      if (workspaces == null) {
-        setState(() {
-          _isLoading = false;
-          _hasError = true;
-        });
-        return;
-      }
-
-      final collected = <_TaskWithContext>[];
-      final projectOptions = <_ProjectOption>[];
-
-      // الـ Inbox هو مشروع وهمي (kInboxProjectId) مش تابع لأي workspace
-      // حقيقي، فما بينجمع من حلقة workspace -> project تحت. لازم نجيب
-      // تاسكاته بشكل منفصل، وإلا تاسكات الـ Inbox يلي إلها due date
-      // ما رح تظهر أبداً بالكالندر.
-      final inboxTasksResult = await getIt<GetTasksUseCase>()(kInboxProjectId);
-      final inboxTasks = inboxTasksResult.fold((failure) => null, (list) => list);
-      if (inboxTasks != null && mounted) {
-        final inboxName = AppLocalizations.of(context)!.inbox;
-        for (final task in inboxTasks) {
-          collected.add(_TaskWithContext(
-            task: task,
-            projectId: kInboxProjectId,
-            projectName: inboxName,
-            workspaceId: '',
-            workspaceName: '',
-          ));
-        }
-      }
-
-      for (final workspace in workspaces) {
-        final projectsResult = await getIt<GetProjectsUseCase>()(workspace.id);
-        final projects = projectsResult.fold((failure) => null, (list) => list);
-        if (projects == null) continue;
-
-        for (final project in projects) {
-          // منجمع كل مشروع كخيار بديالوج "إضافة تاسك"، بغض النظر إذا
-          // عندو تاسكات حالياً أو لأ — حتى المشروع الفاضي لازم يظهر
-          // بالقائمة عشان المستخدم يقدر يضيفلو أول تاسك من الكالندر.
-          projectOptions.add(_ProjectOption(
-            projectId: project.id,
-            projectName: project.name,
-            workspaceId: workspace.id,
-            workspaceName: workspace.name,
-          ));
-
-          final tasksResult = await getIt<GetTasksUseCase>()(project.id);
-          final tasks = tasksResult.fold((failure) => null, (list) => list);
-          if (tasks == null) continue;
-
-          for (final task in tasks) {
-            collected.add(_TaskWithContext(
-              task: task,
-              projectId: project.id,
-              projectName: project.name,
-              workspaceId: workspace.id,
-              workspaceName: workspace.name,
-            ));
-          }
-        }
-      }
-
-      if (!mounted) return;
-      setState(() {
-        _allTasks = collected;
-        _workspaces = workspaces;
-        _projectOptions = projectOptions;
-        _isLoading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _hasError = true;
-      });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_tasksLoaded) {
+      _tasksLoaded = true;
+      _loadTasks();
     }
   }
+
+  void _loadTasks() {
+    final l10n = AppLocalizations.of(context)!;
+    context.read<CalendarBloc>().add(CalendarTasksLoadRequested(inboxLabel: l10n.inbox));
+  }
+
 
   bool _isSameDay(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  List<_TaskWithContext> get _tasksForSelectedDate {
-    return _allTasks.where((entry) {
+  List<TaskWithContext> _tasksForSelectedDate(List<TaskWithContext> allTasks) {
+    return allTasks.where((entry) {
       final due = entry.task.dueDate;
       if (due == null) return false;
       return _isSameDay(due, _selectedDate);
@@ -199,8 +82,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ..sort((a, b) => a.task.title.compareTo(b.task.title));
   }
 
-  bool _hasTaskOn(DateTime day) {
-    return _allTasks.any((entry) {
+  bool _hasTaskOn(List<TaskWithContext> allTasks, DateTime day) {
+    return allTasks.any((entry) {
       final due = entry.task.dueDate;
       if (due == null) return false;
       return _isSameDay(due, day);
@@ -227,7 +110,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _selectDate(DateTime(now.year, now.month, now.day));
   }
 
-  Future<void> _openTaskDetail(_TaskWithContext entry) async {
+  Future<void> _openTaskDetail(TaskWithContext entry) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -240,7 +123,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // بعد الرجوع من شاشة التفاصيل، ممكن يكون في تعديل صار على التاسك
     // (تغيير حالة، تعديل تاريخ، حذف...) فمنعيد التحميل حتى الكالندر
     // يضل متوافق مع آخر تحديث.
-    _loadAllTasks();
+    if (mounted) _loadTasks();
   }
 
   @override
@@ -263,38 +146,66 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadAllTasks,
-        color: AppColors.primary,
-        // ─── صرنا نستخدم CustomScrollView واحد للصفحة كلها (الكالندر +
-        // الليستة) بدل Column/Expanded منفصلين. هيك لو الشاشة قصيرة أو
-        // الكالندر إله ارتفاع كبير (6 أسابيع مثلاً)، الليستة ما بتنضغط
-        // لارتفاع صفر — المستخدم بس بيقدر يسحب/يزحلق لتحت ليشوفها،
-        // بدل ما تختفي بالكامل بدون أي إشعار.
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(child: _buildCalendarCard(context, locale)),
-            const SliverToBoxAdapter(child: SizedBox(height: 8)),
-            ..._buildTasksSlivers(context, l10n),
-          ],
-        ),
+      body: BlocConsumer<CalendarBloc, CalendarState>(
+        listener: (context, state) {
+          if (state is CalendarError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: AppColors.error,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
+        },
+        builder: (context, state) {
+          final isLoading = state is CalendarLoading || state is CalendarInitial;
+          final hasError = state is CalendarError;
+
+          final allTasks = state is CalendarLoaded
+              ? state.tasks
+              : state is CalendarError
+                  ? state.tasks
+                  : <TaskWithContext>[];
+          final workspaces = state is CalendarLoaded
+              ? state.workspaces
+              : state is CalendarError
+                  ? state.workspaces
+                  : const [];
+          final projectOptions = state is CalendarLoaded
+              ? state.projectOptions
+              : state is CalendarError
+                  ? state.projectOptions
+                  : const <ProjectOption>[];
+
+          return RefreshIndicator(
+            onRefresh: () async => _loadTasks(),
+            color: AppColors.primary,
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _buildCalendarCard(context, locale, allTasks)),
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                ..._buildTasksSlivers(context, l10n, allTasks, workspaces, projectOptions, isLoading, hasError),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildCalendarCard(BuildContext context, String locale) {
+  Widget _buildCalendarCard(BuildContext context, String locale, List<TaskWithContext> allTasks) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final monthLabel = DateFormat.yMMMM(locale).format(_displayedMonth);
 
     final firstOfMonth = DateTime(_displayedMonth.year, _displayedMonth.month, 1);
     final daysInMonth = DateTime(_displayedMonth.year, _displayedMonth.month + 1, 0).day;
-    // الأحد = 0 .. السبت = 6 (DateTime.weekday: الاثنين = 1 .. الأحد = 7)
     final leadingBlanks = firstOfMonth.weekday % 7;
     final totalCells = leadingBlanks + daysInMonth;
     final rowCount = (totalCells / 7).ceil();
 
-    // أسماء الأيام (حرف واحد) حسب اللغة الحالية، بادئين من الأحد.
-    final referenceSunday = DateTime(2023, 1, 1); // أحد
+    final referenceSunday = DateTime(2023, 1, 1);
     final weekdayLabels = List.generate(7, (i) {
       final d = referenceSunday.add(Duration(days: i));
       final name = DateFormat.E(locale).format(d);
@@ -361,7 +272,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   return const Expanded(child: SizedBox(height: 44));
                 }
                 final date = DateTime(_displayedMonth.year, _displayedMonth.month, dayNumber);
-                return Expanded(child: _buildDayCell(context, date, isDark));
+                return Expanded(child: _buildDayCell(context, date, isDark, allTasks));
               }),
             ),
         ],
@@ -369,10 +280,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildDayCell(BuildContext context, DateTime date, bool isDark) {
+  Widget _buildDayCell(BuildContext context, DateTime date, bool isDark, List<TaskWithContext> allTasks) {
     final isSelected = _isSameDay(date, _selectedDate);
     final isToday = _isSameDay(date, DateTime.now());
-    final hasTask = _hasTaskOn(date);
+    final hasTask = _hasTaskOn(allTasks, date);
 
     Color textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
     if (isSelected) textColor = Colors.white;
@@ -423,9 +334,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  List<Widget> _buildTasksSlivers(BuildContext context, AppLocalizations l10n) {
+  List<Widget> _buildTasksSlivers(
+    BuildContext context,
+    AppLocalizations l10n,
+    List<TaskWithContext> allTasks,
+    List workspaces,
+    List<ProjectOption> projectOptions,
+    bool isLoading,
+    bool hasError,
+  ) {
     final formattedDate = DateFormat.yMMMMd(Localizations.localeOf(context).toString()).format(_selectedDate);
-    final tasks = _tasksForSelectedDate;
+    final tasks = _tasksForSelectedDate(allTasks);
 
     return [
       SliverPadding(
@@ -439,7 +358,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
-              if (!_isLoading && tasks.isNotEmpty)
+              if (!isLoading && tasks.isNotEmpty)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -455,7 +374,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
         ),
       ),
-      if (_hasError)
+      if (hasError)
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -475,7 +394,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
         ),
-      if (_isLoading)
+      if (isLoading)
         const SliverPadding(
           padding: EdgeInsets.only(top: 40, bottom: 40),
           sliver: SliverToBoxAdapter(child: Center(child: CircularProgressIndicator())),
@@ -483,7 +402,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       else if (tasks.isEmpty)
         SliverFillRemaining(
           hasScrollBody: false,
-          child: _buildEmptyState(context, l10n),
+          child: _buildEmptyState(context, l10n, workspaces, projectOptions),
         )
       else
         SliverPadding(
@@ -491,16 +410,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
-                // آخر عنصر بالليستة هو تايل "إضافة تاسك" (نفس شكل وسلوك
-                // Inbox/Project)، مش أول عنصرين متل السابق.
                 if (index == tasks.length * 2) {
-                  return _buildAddTaskTile(context, l10n);
+                  return _buildAddTaskTile(context, l10n, workspaces, projectOptions);
                 }
                 if (index.isOdd) return const SizedBox(height: 12);
                 return _buildTaskTile(context, l10n, tasks[index ~/ 2]);
               },
-              // tasks.length عناصر + tasks.length فواصل بينهم + فاصل قبل
-              // تايل الإضافة + تايل الإضافة نفسه.
               childCount: tasks.length * 2 + 1,
             ),
           ),
@@ -508,13 +423,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     ];
   }
 
-  /// تايل "إضافة تاسك" بمنتصف الشاشة (Inline)، بنفس شكل وسلوك تايل
-  /// الإضافة الموجود بشاشة Inbox/Project (tasks_screen.dart) —
-  /// بدل الـ FloatingActionButton السابق يلي كان بأسفل يمين الشاشة.
-  Widget _buildAddTaskTile(BuildContext context, AppLocalizations l10n) {
+  Widget _buildAddTaskTile(
+    BuildContext context,
+    AppLocalizations l10n,
+    List workspaces,
+    List<ProjectOption> projectOptions,
+  ) {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () => _showAddTaskDialog(context, l10n),
+      onTap: () => _showAddTaskDialog(context, l10n, workspaces, projectOptions),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
@@ -543,7 +460,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context, AppLocalizations l10n) {
+  Widget _buildEmptyState(
+    BuildContext context,
+    AppLocalizations l10n,
+    List workspaces,
+    List<ProjectOption> projectOptions,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Padding(
@@ -564,18 +486,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
               style: TextStyle(fontSize: 13, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
             ),
             const SizedBox(height: 24),
-            // زر "إضافة تاسك" لازم يضل موجود هون كمان، لأنه لما شلنا
-            // الـ FloatingActionButton صار هاد التايل الإنلاين هو الطريقة
-            // الوحيدة لإضافة تاسك من شاشة الكالندر (متل حالة عدم وجود
-            // تاسكات بشاشة Inbox/Project).
-            SizedBox(width: double.infinity, child: _buildAddTaskTile(context, l10n)),
+            SizedBox(width: double.infinity, child: _buildAddTaskTile(context, l10n, workspaces, projectOptions)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTaskTile(BuildContext context, AppLocalizations l10n, _TaskWithContext entry) {
+  Widget _buildTaskTile(BuildContext context, AppLocalizations l10n, TaskWithContext entry) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final task = entry.task;
     final label = TaskLabels.byId(task.labelId);
@@ -652,7 +570,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  void _confirmDeleteTask(BuildContext context, AppLocalizations l10n, _TaskWithContext entry) {
+  void _confirmDeleteTask(BuildContext context, AppLocalizations l10n, TaskWithContext entry) {
+    final bloc = context.read<CalendarBloc>();
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -661,9 +580,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         content: Text('${l10n.deleteTaskConfirm(entry.task.title)}\n${l10n.actionCannotBeUndone}'),
         actions: [
           ElevatedButton(
-            onPressed: () async {
+            onPressed: () {
+              bloc.add(CalendarTaskDeleteRequested(entry));
               Navigator.pop(dialogContext);
-              await _deleteTask(entry);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             child: Text(l10n.delete),
@@ -671,39 +590,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
           TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
         ],
       ),
-    );
-  }
-
-  /// منحذف التاسك مباشرة عن طريق الـ UseCase (متل باقي شاشة الكالندر يلي
-  /// بتنادي الـ UseCases مباشرة بدون Bloc، لأنه هون التاسكات جايي من كذا
-  /// مشروع سوا). بعد الحذف منعيد تحميل كل التاسكات حتى الكالندر (وبروجيكت
-  /// التاسك الأصلي لو رجع المستخدم إلو) يضلوا متوافقين مع آخر تحديث.
-  Future<void> _deleteTask(_TaskWithContext entry) async {
-    final result = await getIt<DeleteTaskUseCase>()(
-      entry.task.id,
-      projectName: entry.projectName,
-      workspaceId: entry.workspaceId,
-      workspaceName: entry.workspaceName,
-    );
-
-    if (!mounted) return;
-
-    result.fold(
-      (failure) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(failure.message),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      },
-      (_) {
-        setState(() {
-          _allTasks = _allTasks.where((e) => e.task.id != entry.task.id).toList();
-        });
-      },
     );
   }
 
@@ -725,14 +611,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Icon(icon, size: 16, color: color);
   }
 
-  /// ديالوج "إضافة تاسك" من شاشة الكالندر — نفس حقول ديالوج الإضافة يلي
-  /// بشاشة المشروع (TasksScreen)، بس هون لازم المستخدم يختار كمان المشروع
-  /// (والورك سبيس التابع إلو) يلي بدو يضيف التاسك فيه، لأنه الكالندر
-  /// بيجمع تاسكات من كل المشاريع سوا وما إلو مشروع واحد ثابت. تاريخ
-  /// الاستحقاق بيتعبى افتراضياً باليوم المحدد حالياً بالكالندر، حتى
-  /// التاسك يظهر فوراً بلستة "تاسكات هاد اليوم" بعد ما ينخلق.
-  void _showAddTaskDialog(BuildContext context, AppLocalizations l10n) {
-    if (_workspaces.isEmpty) {
+  void _showAddTaskDialog(
+    BuildContext context,
+    AppLocalizations l10n,
+    List workspacesRaw,
+    List<ProjectOption> projectOptions,
+  ) {
+    final workspaces = workspacesRaw.cast();
+    if (workspaces.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.noProjectsForTask),
@@ -743,21 +629,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return;
     }
 
+    final bloc = context.read<CalendarBloc>();
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     List<String> attachmentPaths = [];
 
-    // قائمة الورك سبيسات — مصدرها _workspaces مباشرة (كل الورك سبيسات
-    // يلي عند المستخدم)، مش مشتقة من _projectOptions، حتى الورك سبيس
-    // يلي ما عندها ولا مشروع بعد تضل تظهر بالقائمة (وبس يفوت المستخدم
-    // فيها بيشوف إنو لازم ينشئ مشروع فيها الأول).
-    final workspaceOptions = _workspaces.map((w) => MapEntry(w.id, w.name)).toList();
+    final workspaceOptions = workspaces.map((w) => MapEntry(w.id as String, w.name as String)).toList();
 
     String? selectedWorkspaceId = workspaceOptions.length == 1 ? workspaceOptions.first.key : null;
-    _ProjectOption? selectedProject;
+    ProjectOption? selectedProject;
     if (selectedWorkspaceId != null) {
-      final projectsInWorkspace = _projectOptions.where((o) => o.workspaceId == selectedWorkspaceId).toList();
+      final projectsInWorkspace = projectOptions.where((o) => o.workspaceId == selectedWorkspaceId).toList();
       if (projectsInWorkspace.length == 1) selectedProject = projectsInWorkspace.first;
     }
     DateTime? selectedDate = _selectedDate;
@@ -771,342 +654,267 @@ class _CalendarScreenState extends State<CalendarScreen> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           final projectsForWorkspace = selectedWorkspaceId == null
-              ? const <_ProjectOption>[]
-              : _projectOptions.where((o) => o.workspaceId == selectedWorkspaceId).toList();
+              ? const <ProjectOption>[]
+              : projectOptions.where((o) => o.workspaceId == selectedWorkspaceId).toList();
 
           return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(l10n.addTask),
-          content: SingleChildScrollView(
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FormField<String>(
-                    initialValue: selectedWorkspaceId,
-                    validator: (value) => value == null ? l10n.requiredField : null,
-                    builder: (field) => InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: l10n.workspace,
-                        errorText: field.errorText,
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          isExpanded: true,
-                          value: selectedWorkspaceId,
-                          hint: Text(l10n.selectWorkspaceHint),
-                          items: workspaceOptions
-                              .map((entry) => DropdownMenuItem(
-                                    value: entry.key,
-                                    child: Text(entry.value, overflow: TextOverflow.ellipsis),
-                                  ))
-                              .toList(),
-                          onChanged: (value) {
-                            setDialogState(() {
-                              selectedWorkspaceId = value;
-                              // منصفّر المشروع المختار سابقاً لأنه ممكن يكون
-                              // تابع لورك سبيس تاني غير يلي صار مختار هلق.
-                              selectedProject = null;
-                            });
-                            field.didChange(value);
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  FormField<_ProjectOption>(
-                    key: ValueKey(selectedWorkspaceId),
-                    initialValue: selectedProject,
-                    validator: (value) => value == null ? l10n.requiredField : null,
-                    builder: (field) => InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: l10n.selectProjectLabel,
-                        errorText: field.errorText,
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<_ProjectOption>(
-                          isExpanded: true,
-                          value: selectedProject,
-                          hint: Text(l10n.selectProjectHint),
-                          items: projectsForWorkspace
-                              .map((option) => DropdownMenuItem(
-                                    value: option,
-                                    child: Text(option.projectName, overflow: TextOverflow.ellipsis),
-                                  ))
-                              .toList(),
-                          onChanged: selectedWorkspaceId == null
-                              ? null
-                              : (value) {
-                                  setDialogState(() => selectedProject = value);
-                                  field.didChange(value);
-                                },
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (selectedWorkspaceId != null && projectsForWorkspace.isEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      l10n.noProjectsInWorkspace,
-                      style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: titleController,
-                    label: l10n.taskTitleLabel,
-                    hint: l10n.taskTitleHint,
-                    autofocus: true,
-                    validator: (value) => value == null || value.trim().isEmpty ? l10n.requiredField : null,
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: descriptionController,
-                    label: l10n.taskDescriptionLabel,
-                    hint: l10n.taskDescriptionHint,
-                  ),
-                  const SizedBox(height: 16),
-                  FormField<DateTime>(
-                    initialValue: selectedDate,
-                    validator: (value) => value == null ? l10n.requiredField : null,
-                    builder: (field) => InkWell(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: dialogContext,
-                          initialDate: selectedDate ?? DateTime.now(),
-                          firstDate: DateTime.now().subtract(const Duration(days: 1)),
-                          lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
-                        );
-                        if (picked != null) {
-                          setDialogState(() => selectedDate = picked);
-                          field.didChange(picked);
-                        }
-                      },
-                      child: InputDecorator(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(l10n.addTask),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FormField<String>(
+                      initialValue: selectedWorkspaceId,
+                      validator: (value) => value == null ? l10n.requiredField : null,
+                      builder: (field) => InputDecorator(
                         decoration: InputDecoration(
-                          labelText: l10n.dueDateLabel,
+                          labelText: l10n.workspace,
                           errorText: field.errorText,
                         ),
-                        child: Text(selectedDate != null ? _formatFullDate(selectedDate!) : l10n.selectDueDate),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            value: selectedWorkspaceId,
+                            hint: Text(l10n.selectWorkspaceHint),
+                            items: workspaceOptions
+                                .map((entry) => DropdownMenuItem(
+                                      value: entry.key,
+                                      child: Text(entry.value, overflow: TextOverflow.ellipsis),
+                                    ))
+                                .toList(),
+                            onChanged: (value) {
+                              setDialogState(() {
+                                selectedWorkspaceId = value;
+                                selectedProject = null;
+                              });
+                              field.didChange(value);
+                            },
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  SegmentedToggle(
-                    label: l10n.importanceLabel,
-                    trueLabel: l10n.important,
-                    falseLabel: l10n.notImportant,
-                    value: isImportant,
-                    onChanged: (value) => setDialogState(() => isImportant = value),
-                  ),
-                  const SizedBox(height: 12),
-                  SegmentedToggle(
-                    label: l10n.urgencyLabel,
-                    trueLabel: l10n.urgent,
-                    falseLabel: l10n.notUrgent,
-                    value: isUrgent,
-                    onChanged: (value) => setDialogState(() => isUrgent = value),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(l10n.labelField, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  FormField<String>(
-                    initialValue: selectedLabelId,
-                    validator: (value) => value == null ? l10n.requiredField : null,
-                    builder: (field) => Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: TaskLabels.predefined.map((label) {
-                            final selected = selectedLabelId == label.id;
-                            return ChoiceChip(
-                              label: Text(_labelName(l10n, label.id)),
-                              selected: selected,
-                              selectedColor: Color(label.colorValue),
-                              labelStyle: TextStyle(color: selected ? Colors.white : null, fontSize: 12),
-                              onSelected: (_) {
-                                final newValue = label.id;
-                                setDialogState(() => selectedLabelId = newValue);
-                                field.didChange(newValue);
-                              },
-                            );
-                          }).toList(),
+                    const SizedBox(height: 16),
+                    FormField<ProjectOption>(
+                      key: ValueKey(selectedWorkspaceId),
+                      initialValue: selectedProject,
+                      validator: (value) => value == null ? l10n.requiredField : null,
+                      builder: (field) => InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: l10n.selectProjectLabel,
+                          errorText: field.errorText,
                         ),
-                        if (field.errorText != null) ...[
-                          const SizedBox(height: 6),
-                          Text(field.errorText!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
-                        ],
-                      ],
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<ProjectOption>(
+                            isExpanded: true,
+                            value: selectedProject,
+                            hint: Text(l10n.selectProjectHint),
+                            items: projectsForWorkspace
+                                .map((option) => DropdownMenuItem(
+                                      value: option,
+                                      child: Text(option.projectName, overflow: TextOverflow.ellipsis),
+                                    ))
+                                .toList(),
+                            onChanged: selectedWorkspaceId == null
+                                ? null
+                                : (value) {
+                                    setDialogState(() => selectedProject = value);
+                                    field.didChange(value);
+                                  },
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  DropdownButtonFormField<RepeatFrequency>(
-                    value: repeatFrequency,
-                    decoration: InputDecoration(labelText: l10n.repeatEveryLabel),
-                    items: RepeatFrequency.values
-                        .map((f) => DropdownMenuItem(value: f, child: Text(_repeatLabel(l10n, f))))
-                        .toList(),
-                    onChanged: (value) => setDialogState(() => repeatFrequency = value ?? RepeatFrequency.none),
-                  ),
-                  const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final result = await FilePicker.platform.pickFiles(allowMultiple: true, withData: true);
-                      if (result != null) {
-                        // على الويب (Chrome) الـ file_picker ما بيرجّع path أبداً (بيرجع
-                        // null)، فلازم نرجع لاسم الملف كـ fallback، وإلا القائمة بتضل
-                        // فاضية بصمت — نفس منطق ديالوج الإضافة بشاشة المشروع.
-                        final selected = result.files.map((f) => kIsWeb ? f.name : (f.path ?? f.name)).toList();
-                        for (final f in result.files) {
-                          if (f.bytes != null) {
-                            AttachmentBytesCache.instance.put(kIsWeb ? f.name : (f.path ?? f.name), f.bytes!);
+                    if (selectedWorkspaceId != null && projectsForWorkspace.isEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        l10n.noProjectsInWorkspace,
+                        style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    CustomTextField(
+                      controller: titleController,
+                      label: l10n.taskTitleLabel,
+                      hint: l10n.taskTitleHint,
+                      autofocus: true,
+                      validator: (value) => value == null || value.trim().isEmpty ? l10n.requiredField : null,
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextField(
+                      controller: descriptionController,
+                      label: l10n.taskDescriptionLabel,
+                      hint: l10n.taskDescriptionHint,
+                    ),
+                    const SizedBox(height: 16),
+                    FormField<DateTime>(
+                      initialValue: selectedDate,
+                      validator: (value) => value == null ? l10n.requiredField : null,
+                      builder: (field) => InkWell(
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: dialogContext,
+                            initialDate: selectedDate ?? DateTime.now(),
+                            firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                            lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                          );
+                          if (picked != null) {
+                            setDialogState(() => selectedDate = picked);
+                            field.didChange(picked);
                           }
-                        }
-                        setDialogState(() {
-                          for (final path in selected) {
-                            if (!attachmentPaths.contains(path)) {
-                              attachmentPaths.add(path);
+                        },
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: l10n.dueDateLabel,
+                            errorText: field.errorText,
+                          ),
+                          child: Text(selectedDate != null ? _formatFullDate(selectedDate!) : l10n.selectDueDate),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SegmentedToggle(
+                      label: l10n.importanceLabel,
+                      trueLabel: l10n.important,
+                      falseLabel: l10n.notImportant,
+                      value: isImportant,
+                      onChanged: (value) => setDialogState(() => isImportant = value),
+                    ),
+                    const SizedBox(height: 12),
+                    SegmentedToggle(
+                      label: l10n.urgencyLabel,
+                      trueLabel: l10n.urgent,
+                      falseLabel: l10n.notUrgent,
+                      value: isUrgent,
+                      onChanged: (value) => setDialogState(() => isUrgent = value),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(l10n.labelField, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 8),
+                    FormField<String>(
+                      initialValue: selectedLabelId,
+                      validator: (value) => value == null ? l10n.requiredField : null,
+                      builder: (field) => Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: TaskLabels.predefined.map((label) {
+                              final selected = selectedLabelId == label.id;
+                              return ChoiceChip(
+                                label: Text(_labelName(l10n, label.id)),
+                                selected: selected,
+                                selectedColor: Color(label.colorValue),
+                                labelStyle: TextStyle(color: selected ? Colors.white : null, fontSize: 12),
+                                onSelected: (_) {
+                                  final newValue = label.id;
+                                  setDialogState(() => selectedLabelId = newValue);
+                                  field.didChange(newValue);
+                                },
+                              );
+                            }).toList(),
+                          ),
+                          if (field.errorText != null) ...[
+                            const SizedBox(height: 6),
+                            Text(field.errorText!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<RepeatFrequency>(
+                      value: repeatFrequency,
+                      decoration: InputDecoration(labelText: l10n.repeatEveryLabel),
+                      items: RepeatFrequency.values
+                          .map((f) => DropdownMenuItem(value: f, child: Text(_repeatLabel(l10n, f))))
+                          .toList(),
+                      onChanged: (value) => setDialogState(() => repeatFrequency = value ?? RepeatFrequency.none),
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final result = await FilePicker.platform.pickFiles(allowMultiple: true, withData: true);
+                        if (result != null) {
+                          final selected = result.files.map((f) => kIsWeb ? f.name : (f.path ?? f.name)).toList();
+                          for (final f in result.files) {
+                            if (f.bytes != null) {
+                              AttachmentBytesCache.instance.put(kIsWeb ? f.name : (f.path ?? f.name), f.bytes!);
                             }
                           }
-                        });
-                      }
-                    },
-                    icon: const Icon(Icons.attach_file),
-                    label: Text(
-                      attachmentPaths.isEmpty ? l10n.attachmentsLabel : l10n.addMoreAttachments,
+                          setDialogState(() {
+                            for (final path in selected) {
+                              if (!attachmentPaths.contains(path)) {
+                                attachmentPaths.add(path);
+                              }
+                            }
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.attach_file),
+                      label: Text(
+                        attachmentPaths.isEmpty ? l10n.attachmentsLabel : l10n.addMoreAttachments,
+                      ),
                     ),
-                  ),
-                  if (attachmentPaths.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text('${attachmentPaths.length} ${l10n.filesSelected}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: attachmentPaths.map((path) {
-                        final fileName = path.split(RegExp(r'[\\/]')).last;
-                        return Chip(
-                          label: Text(fileName, overflow: TextOverflow.ellipsis),
-                          onDeleted: () => setDialogState(() => attachmentPaths.remove(path)),
-                          deleteIconColor: AppColors.error,
-                        );
-                      }).toList(),
-                    ),
+                    if (attachmentPaths.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text('${attachmentPaths.length} ${l10n.filesSelected}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: attachmentPaths.map((path) {
+                          final fileName = path.split(RegExp(r'[\\/]')).last;
+                          return Chip(
+                            label: Text(fileName, overflow: TextOverflow.ellipsis),
+                            onDeleted: () => setDialogState(() => attachmentPaths.remove(path)),
+                            deleteIconColor: AppColors.error,
+                          );
+                        }).toList(),
+                      ),
+                    ],
                   ],
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
-                final project = selectedProject;
-                if (project == null) return;
-
-                Navigator.pop(dialogContext);
-                await _createTask(
-                  project: project,
-                  title: titleController.text.trim(),
-                  description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
-                  isImportant: isImportant,
-                  isUrgent: isUrgent,
-                  dueDate: selectedDate,
-                  labelId: selectedLabelId,
-                  repeatFrequency: repeatFrequency,
-                  attachmentPaths: attachmentPaths,
-                  l10n: l10n,
-                );
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-              child: Text(l10n.create),
-            ),
-            TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
-          ],
-        );
-        },
-      ),
-    );
-  }
-
-  /// منخلق التاسك مباشرة عن طريق الـ UseCase بنفس المشروع يلي المستخدم
-  /// اختارو، بعدين منعيد تحميل كل تاسكات الكالندر (عبر GetTasksUseCase
-  /// لهيك المشروع بالذات ضمن غيره) — هيك لو المستخدم راح بعدين لشاشة
-  /// هيك المشروع (TasksScreen) رح يلاقي التاسك فعلاً موجود فيها، لأنه
-  /// التخزين واحد ومشترك بين الشاشتين (نفس الـ Repository/DataSource).
-  Future<void> _createTask({
-    required _ProjectOption project,
-    required String title,
-    String? description,
-    required bool isImportant,
-    required bool isUrgent,
-    DateTime? dueDate,
-    String? labelId,
-    required RepeatFrequency repeatFrequency,
-    List<String> attachmentPaths = const [],
-    required AppLocalizations l10n,
-  }) async {
-    final result = await getIt<CreateTaskUseCase>()(
-      projectId: project.projectId,
-      title: title,
-      description: description,
-      isImportant: isImportant,
-      isUrgent: isUrgent,
-      dueDate: dueDate,
-      labelId: labelId,
-      repeatFrequency: repeatFrequency,
-    );
-
-    if (!mounted) return;
-
-    await result.fold(
-      (failure) async {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(failure.message),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      },
-      (newTask) async {
-        // لو المستخدم رفق ملفات، منرفعها بعد ما نخلق التاسك (نفس ترتيب
-        // TaskBloc._onTaskCreateRequested بالضبط) — التاسك أصلاً انخلق
-        // بنجاح، فحتى لو فشل رفع المرفقات منبين رسالة خطأ بس ما منلغي
-        // التاسك نفسه.
-        if (attachmentPaths.isNotEmpty) {
-          final uploadResult = await getIt<UploadTaskAttachmentsUseCase>()(
-            taskId: newTask.id,
-            filePaths: attachmentPaths,
-          );
-          if (mounted) {
-            uploadResult.fold(
-              (failure) => ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(failure.message),
-                  backgroundColor: AppColors.error,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              (_) {},
-            );
-          }
-        }
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  if (!formKey.currentState!.validate()) return;
+                  final project = selectedProject;
+                  if (project == null) return;
 
-        // منروّح تلقائياً لتاريخ استحقاق التاسك الجديد (لو محدد) حتى
-        // يبين فوراً بلستة "تاسكات هاد اليوم" بدون ما المستخدم يدوّر عليه.
-        if (dueDate != null) {
-          _selectDate(DateTime(dueDate.year, dueDate.month, dueDate.day));
-        }
-        await _loadAllTasks();
-      },
+                  Navigator.pop(dialogContext);
+                  bloc.add(CalendarTaskCreateRequested(
+                    project: project,
+                    title: titleController.text.trim(),
+                    description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
+                    isImportant: isImportant,
+                    isUrgent: isUrgent,
+                    dueDate: selectedDate,
+                    labelId: selectedLabelId,
+                    repeatFrequency: repeatFrequency,
+                    attachmentPaths: attachmentPaths,
+                    inboxLabel: l10n.inbox,
+                  ));
+
+                  // منروّح تلقائياً لتاريخ استحقاق التاسك الجديد (لو محدد)
+                  // حتى يبين فوراً بلستة "تاسكات هاد اليوم".
+                  if (selectedDate != null) {
+                    _selectDate(DateTime(selectedDate!.year, selectedDate!.month, selectedDate!.day));
+                  }
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                child: Text(l10n.create),
+              ),
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
+            ],
+          );
+        },
+      ),
     );
   }
 

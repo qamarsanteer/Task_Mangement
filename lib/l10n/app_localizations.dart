@@ -275,7 +275,7 @@ abstract class AppLocalizations {
   /// No description provided for @invalidEmail.
   ///
   /// In en, this message translates to:
-  /// **'Please enter a valid email'**
+  /// **'Please enter a valid email address'**
   String get invalidEmail;
 
   /// No description provided for @passwordMismatch.
@@ -583,6 +583,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter project name'**
   String get projectNameHint;
+
+  /// No description provided for @projectDescriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Description (optional)'**
+  String get projectDescriptionLabel;
+
+  /// No description provided for @projectDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add more details about the project'**
+  String get projectDescriptionHint;
+
+  /// No description provided for @progressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get progressLabel;
+
+  /// No description provided for @membersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get membersLabel;
+
+  /// No description provided for @overdueLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get overdueLabel;
+
+  /// No description provided for @notStartedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Not started'**
+  String get notStartedLabel;
+
+  /// No description provided for @inProgressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get inProgressLabel;
+
+  /// No description provided for @completedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get completedLabel;
+
+  /// No description provided for @noDescriptionAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'No description added'**
+  String get noDescriptionAdded;
+
+  /// No description provided for @noMembersYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No members yet'**
+  String get noMembersYet;
+
+  /// No description provided for @noTasksYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks yet'**
+  String get noTasksYet;
+
+  /// No description provided for @pendingInviteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pendingInviteLabel;
+
+  /// No description provided for @tasksCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} tasks'**
+  String tasksCountLabel(Object count);
 
   /// No description provided for @deleteProjectTitle.
   ///
@@ -1165,6 +1243,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No tasks in this section'**
   String get boardColumnEmpty;
+
+  /// No description provided for @inviteMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite Member'**
+  String get inviteMember;
+
+  /// No description provided for @projectProperties.
+  ///
+  /// In en, this message translates to:
+  /// **'Properties'**
+  String get projectProperties;
+
+  /// No description provided for @permissionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission'**
+  String get permissionLabel;
+
+  /// No description provided for @permissionReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Read only'**
+  String get permissionReadOnly;
+
+  /// No description provided for @permissionReadWrite.
+  ///
+  /// In en, this message translates to:
+  /// **'Read & write'**
+  String get permissionReadWrite;
+
+  /// No description provided for @send.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get send;
+
+  /// No description provided for @inviteSentMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation sent to {email}'**
+  String inviteSentMessage(String email);
 }
 
 class _AppLocalizationsDelegate

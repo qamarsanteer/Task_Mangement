@@ -9,6 +9,8 @@ import '../../domain/entities/project_entity.dart';
 import '../../domain/repositories/project_repository.dart';
 import '../datasources/project_remote_data_source.dart';
 import '../models/project_model.dart';
+import '../../domain/entities/project_member_role.dart';
+import '../../domain/entities/project_member_entity.dart';
 
 class ProjectRepositoryImpl implements ProjectRepository, Syncable {
   static const _pendingOpsKey = 'pending_project_ops';
@@ -58,12 +60,17 @@ class ProjectRepositoryImpl implements ProjectRepository, Syncable {
   Future<Either<Failure, ProjectEntity>> createProject({
     required String workspaceId,
     required String name,
+    String? description,
   }) async {
     final isConnected = await _connectivityService.isConnected;
 
     if (isConnected) {
       try {
-        final project = await _remoteDataSource.createProject(workspaceId: workspaceId, name: name);
+        final project = await _remoteDataSource.createProject(
+          workspaceId: workspaceId,
+          name: name,
+          description: description,
+        );
         final current = _cache.getList(_cacheKey(workspaceId)) ?? [];
         current.add((project as ProjectModel).toJson());
         await _cache.saveList(_cacheKey(workspaceId), current);
@@ -78,12 +85,24 @@ class ProjectRepositoryImpl implements ProjectRepository, Syncable {
 
     // أوفلاين: عنصر محلي مؤقت + تسجيل عملية "إنشاء" بطابور المزامنة
     final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
-    final localProject = ProjectModel(id: tempId, name: name, workspaceId: workspaceId, createdAt: DateTime.now());
+    final localProject = ProjectModel(
+      id: tempId,
+      name: name,
+      description: description,
+      workspaceId: workspaceId,
+      createdAt: DateTime.now(),
+    );
     final current = _cache.getList(_cacheKey(workspaceId)) ?? [];
     current.add(localProject.toJson());
     await _cache.saveList(_cacheKey(workspaceId), current);
     await _indexProjects(workspaceId, [tempId]);
-    await _addPendingOp({'type': 'create', 'tempId': tempId, 'workspaceId': workspaceId, 'name': name});
+    await _addPendingOp({
+      'type': 'create',
+      'tempId': tempId,
+      'workspaceId': workspaceId,
+      'name': name,
+      'description': description,
+    });
     return Right(localProject);
   }
 
@@ -115,6 +134,46 @@ class ProjectRepositoryImpl implements ProjectRepository, Syncable {
     return const Right(null);
   }
 
+  @override
+  Future<Either<Failure, void>> inviteMember({
+    required String projectId,
+    required String email,
+    required ProjectMemberRole role,
+  }) async {
+    final isConnected = await _connectivityService.isConnected;
+
+    if (!isConnected) {
+      return const Left(NetworkFailure('لا يوجد اتصال بالإنترنت. لا يمكن إرسال الدعوة حالياً.'));
+    }
+
+    try {
+      await _remoteDataSource.inviteMember(projectId: projectId, email: email, role: role);
+      return const Right(null);
+    } on DioException catch (e) {
+      return Left(DioErrorMapper.map(e));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ProjectMemberEntity>>> getMembers(String projectId) async {
+    final isConnected = await _connectivityService.isConnected;
+
+    if (!isConnected) {
+      return const Left(NetworkFailure('لا يوجد اتصال بالإنترنت. لا يمكن جلب الأعضاء حالياً.'));
+    }
+
+    try {
+      final members = await _remoteDataSource.getMembers(projectId);
+      return Right(members);
+    } on DioException catch (e) {
+      return Left(DioErrorMapper.map(e));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
   // ─── Syncable ───
 
   @override
@@ -129,6 +188,7 @@ class ProjectRepositoryImpl implements ProjectRepository, Syncable {
           final created = await _remoteDataSource.createProject(
             workspaceId: op['workspaceId'] as String,
             name: op['name'] as String,
+            description: op['description'] as String?,
           );
           await _replaceTempId(op['workspaceId'] as String, op['tempId'] as String, created as ProjectModel);
         } else if (op['type'] == 'delete') {

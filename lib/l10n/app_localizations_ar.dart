@@ -96,7 +96,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get requiredField => 'هذا الحقل مطلوب';
 
   @override
-  String get invalidEmail => 'يرجى إدخال بريد إلكتروني صحيح';
+  String get invalidEmail => 'الرجاء إدخال بريد إلكتروني صحيح';
 
   @override
   String get passwordMismatch => 'كلمات المرور غير متطابقة';
@@ -259,6 +259,47 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get projectNameHint => 'أدخل اسم المشروع';
+
+  @override
+  String get projectDescriptionLabel => 'الوصف (اختياري)';
+
+  @override
+  String get projectDescriptionHint => 'أضف تفاصيل إضافية عن المشروع';
+
+  @override
+  String get progressLabel => 'التقدم';
+
+  @override
+  String get membersLabel => 'الأعضاء';
+
+  @override
+  String get overdueLabel => 'متأخرة';
+
+  @override
+  String get notStartedLabel => 'لم تبدأ';
+
+  @override
+  String get inProgressLabel => 'قيد التنفيذ';
+
+  @override
+  String get completedLabel => 'مكتملة';
+
+  @override
+  String get noDescriptionAdded => 'لا يوجد وصف مضاف';
+
+  @override
+  String get noMembersYet => 'لا يوجد أعضاء بعد';
+
+  @override
+  String get noTasksYet => 'لا يوجد تاسكات بعد';
+
+  @override
+  String get pendingInviteLabel => 'بانتظار الرد';
+
+  @override
+  String tasksCountLabel(Object count) {
+    return '$count تاسك';
+  }
 
   @override
   String get deleteProjectTitle => 'حذف مشروع';
@@ -564,4 +605,27 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get boardColumnEmpty => 'لا توجد مهام في هذا القسم';
+
+  @override
+  String get inviteMember => 'دعوة عضو';
+
+  @override
+  String get projectProperties => 'خصائص';
+
+  @override
+  String get permissionLabel => 'الصلاحية';
+
+  @override
+  String get permissionReadOnly => 'قراءة فقط';
+
+  @override
+  String get permissionReadWrite => 'قراءة وكتابة';
+
+  @override
+  String get send => 'إرسال';
+
+  @override
+  String inviteSentMessage(String email) {
+    return 'تم إرسال الدعوة إلى $email';
+  }
 }

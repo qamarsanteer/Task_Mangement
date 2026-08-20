@@ -10,6 +10,11 @@ import '../bloc/project_bloc.dart';
 import '../bloc/project_event.dart';
 import '../bloc/project_state.dart';
 import '../../../task/presentation/screens/tasks_screen.dart';
+import '../../domain/entities/project_member_role.dart';
+import '../bloc/project_invite_bloc.dart';
+import '../bloc/project_invite_event.dart';
+import '../bloc/project_invite_state.dart';
+import 'project_properties_screen.dart';
 
 class ProjectsScreen extends StatelessWidget {
   final WorkspaceEntity workspace;
@@ -93,6 +98,185 @@ class _ProjectsViewState extends State<_ProjectsView> {
     );
   }
 
+  void _showProjectActionsSheet(BuildContext context, AppLocalizations l10n) {
+    final isSingle = _selectedIds.length == 1;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              if (isSingle)
+                ListTile(
+                  leading: const Icon(Icons.person_add_alt_1),
+                  title: Text(l10n.inviteMember),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    final projectId = _selectedIds.first;
+                    _showInviteMemberDialog(context, l10n, projectId);
+                  },
+                ),
+              if (isSingle)
+                ListTile(
+                  leading: const Icon(Icons.settings_outlined),
+                  title: Text(l10n.projectProperties),
+                  onTap: () {
+                    Navigator.pop(sheetContext);
+                    final projectId = _selectedIds.first;
+                    _openProjectProperties(context, projectId);
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: AppColors.error),
+                title: Text(
+                  l10n.delete,
+                  style: const TextStyle(color: AppColors.error),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _confirmDeleteSelected(context, l10n);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showInviteMemberDialog(BuildContext context, AppLocalizations l10n, String projectId) {
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    ProjectMemberRole selectedRole = ProjectMemberRole.readOnly;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => BlocProvider(
+        create: (_) => getIt<ProjectInviteBloc>(),
+        child: BlocConsumer<ProjectInviteBloc, ProjectInviteState>(
+                    listener: (context, state) {
+            if (state is ProjectInviteSuccess) {
+              Navigator.pop(dialogContext);
+              _clearSelection();
+              ScaffoldMessenger.of(this.context).showSnackBar(
+                SnackBar(
+                  content: Text(l10n.inviteSentMessage(state.email)),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              );
+            } else if (state is ProjectInviteFailure) {
+              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              );
+            }
+          },
+          builder: (context, state) {
+            final isLoading = state is ProjectInviteLoading;
+
+            return StatefulBuilder(
+              builder: (dialogContext, setDialogState) => AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                title: Text(l10n.inviteMember),
+                content: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CustomTextField(
+                        controller: controller,
+                        label: l10n.email,
+                        hint: l10n.email,
+                        autofocus: true,
+                        keyboardType: TextInputType.emailAddress,
+                        
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return l10n.requiredField;
+                          }
+                          final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+                          if (!emailRegex.hasMatch(value.trim())) {
+                            return l10n.invalidEmail;
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          l10n.permissionLabel,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      RadioListTile<ProjectMemberRole>(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(l10n.permissionReadOnly),
+                        value: ProjectMemberRole.readOnly,
+                        groupValue: selectedRole,
+                        onChanged: isLoading
+                            ? null
+                            : (value) => setDialogState(() => selectedRole = value!),
+                      ),
+                      RadioListTile<ProjectMemberRole>(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(l10n.permissionReadWrite),
+                        value: ProjectMemberRole.readWrite,
+                        groupValue: selectedRole,
+                        onChanged: isLoading
+                            ? null
+                            : (value) => setDialogState(() => selectedRole = value!),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  ElevatedButton(
+                    onPressed: isLoading
+                        ? null
+                        : () {
+                            if (formKey.currentState!.validate()) {
+                              context.read<ProjectInviteBloc>().add(
+                                    ProjectInviteMemberRequested(
+                                      projectId: projectId,
+                                      email: controller.text.trim(),
+                                      role: selectedRole,
+                                    ),
+                                  );
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : Text(l10n.send),
+                  ),
+                  TextButton(
+                    onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+                    child: Text(l10n.cancel),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -118,12 +302,11 @@ class _ProjectsViewState extends State<_ProjectsView> {
                   },
                   child: const Text('Select All', style: TextStyle(color: Colors.white)),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.more_vert),
-                  onPressed: _selectedIds.isEmpty
-                      ? null
-                      : () => _confirmDeleteSelected(context, l10n),
-                ),
+                 if (_selectedIds.isNotEmpty)
+                  IconButton(
+                    icon: const Icon(Icons.more_vert),
+                    onPressed: () => _showProjectActionsSheet(context, l10n),
+                  ),
               ],
             )
           : AppBar(
@@ -131,7 +314,6 @@ class _ProjectsViewState extends State<_ProjectsView> {
               actions: [
                 IconButton(icon: const Icon(Icons.search), onPressed: () => _showComingSoon(context, l10n)),
                 IconButton(icon: const Icon(Icons.filter_list), onPressed: () => _showComingSoon(context, l10n)),
-                IconButton(icon: const Icon(Icons.more_vert), onPressed: () => _showComingSoon(context, l10n)),
               ],
             ),
       body: BlocConsumer<ProjectBloc, ProjectState>(
@@ -302,8 +484,34 @@ class _ProjectsViewState extends State<_ProjectsView> {
     );
   }
 
+  void _openProjectProperties(BuildContext context, String projectId) {
+    final state = context.read<ProjectBloc>().state;
+    final projects = state is ProjectLoaded
+        ? state.projects
+        : state is ProjectError
+            ? state.projects
+            : <ProjectEntity>[];
+
+    ProjectEntity? foundProject;
+    for (final p in projects) {
+      if (p.id == projectId) {
+        foundProject = p;
+        break;
+      }
+    }
+    if (foundProject == null) return;
+    final ProjectEntity project = foundProject;
+
+    _clearSelection();
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ProjectPropertiesScreen(project: project)),
+    );
+  }
+
   void _showAddProjectDialog(BuildContext context, AppLocalizations l10n) {
-    final controller = TextEditingController();
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
     final formKey = GlobalKey<FormState>();
     final bloc = context.read<ProjectBloc>();
 
@@ -314,19 +522,40 @@ class _ProjectsViewState extends State<_ProjectsView> {
         title: Text(l10n.addProject),
         content: Form(
           key: formKey,
-          child: CustomTextField(
-            controller: controller,
-            label: l10n.projectNameLabel,
-            hint: l10n.projectNameHint,
-            autofocus: true,
-            validator: (value) => value == null || value.trim().isEmpty ? l10n.requiredField : null,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CustomTextField(
+                controller: nameController,
+                label: l10n.projectNameLabel,
+                hint: l10n.projectNameHint,
+                autofocus: true,
+                validator: (value) => value == null || value.trim().isEmpty ? l10n.requiredField : null,
+              ),
+              const SizedBox(height: 16),
+              CustomTextField(
+                controller: descriptionController,
+                label: l10n.projectDescriptionLabel,
+                hint: l10n.projectDescriptionHint,
+                minLines: 2,
+                maxLines: 4,
+                // اختياري: بدون validator، المشروع بينخلق حتى لو ترك الوصف فاضي
+              ),
+            ],
           ),
         ),
         actions: [
           ElevatedButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
-                bloc.add(ProjectCreateRequested(workspaceId: widget.workspace.id, name: controller.text.trim()));
+                final description = descriptionController.text.trim();
+                bloc.add(
+                  ProjectCreateRequested(
+                    workspaceId: widget.workspace.id,
+                    name: nameController.text.trim(),
+                    description: description.isEmpty ? null : description,
+                  ),
+                );
                 Navigator.pop(dialogContext);
               }
             },

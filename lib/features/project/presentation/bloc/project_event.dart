@@ -16,9 +16,10 @@ class ProjectsLoadRequested extends ProjectEvent {
 class ProjectCreateRequested extends ProjectEvent {
   final String workspaceId;
   final String name;
-  const ProjectCreateRequested({required this.workspaceId, required this.name});
+  final String? description;
+  const ProjectCreateRequested({required this.workspaceId, required this.name, this.description});
   @override
-  List<Object?> get props => [workspaceId, name];
+  List<Object?> get props => [workspaceId, name, description];
 }
 
 class ProjectDeleteRequested extends ProjectEvent {

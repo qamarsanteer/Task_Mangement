@@ -11,12 +11,10 @@ import '../../../../core/widgets/segmented_toggle.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../calendar/presentation/screens/project_calendar_screen.dart';
 import '../../../project/domain/entities/project_entity.dart';
-import '../../../project/domain/usecases/get_projects_usecase.dart';
-import '../../../workspace/domain/entities/workspace_entity.dart';
-import '../../../workspace/domain/usecases/get_workspaces_usecase.dart';
+import '../../../project/presentation/cubit/project_picker_cubit.dart';
+import '../../../project/presentation/cubit/project_picker_state.dart';
 import '../../domain/entities/task_entity.dart';
 import '../../domain/entities/task_label.dart';
-import '../../domain/usecases/move_task_to_project_usecase.dart';
 import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
@@ -732,164 +730,131 @@ class _TasksViewState extends State<_TasksView> {
     );
   }
 
-  /// ديالوج اختيار الوجهة (Workspace ثم Project) لنقل تاسك من الـ Inbox
-  /// إلها — نفس فكرة ديالوج "إضافة تاسك" بشاشة الكالندر (يلي كمان
-  /// بيخيّر بين كذا مشروع/ورك سبيس)، بس هون بس منختار وجهة وبنقل التاسك
-  /// الموجود بدل ما ننشئ وحدة جديدة. منستدعي الـ UseCase مباشرة (مش
-  /// عن طريق الـ Bloc) حتى نقدر ننتظر (await) نتيجة النقل قبل ما ننتقل
-  /// لشاشة المشروع الجديد، وهيك منضمن إنه التاسك المنقول رح يظهر فيها
-  /// فوراً من أول تحميل.
-  void _showMoveToProjectDialog(BuildContext context, AppLocalizations l10n, TaskEntity task) async {
+  void _showMoveToProjectDialog(BuildContext context, AppLocalizations l10n, TaskEntity task) {
     final inboxBloc = context.read<TaskBloc>();
-
-    final workspacesResult = await getIt<GetWorkspacesUseCase>()();
-    if (!context.mounted) return;
-
-    final workspaces = workspacesResult.fold((failure) => <WorkspaceEntity>[], (list) => list);
-    if (workspaces.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.noProjectsForTask),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      );
-      return;
-    }
-
-    String? selectedWorkspaceId;
-    WorkspaceEntity? selectedWorkspace;
-    List<ProjectEntity> projectsForWorkspace = [];
-    ProjectEntity? selectedProject;
-    bool isLoadingProjects = false;
 
     showDialog(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) {
-          Future<void> loadProjects(String workspaceId) async {
-            setDialogState(() => isLoadingProjects = true);
-            final result = await getIt<GetProjectsUseCase>()(workspaceId);
-            setDialogState(() {
-              projectsForWorkspace = result.fold((failure) => [], (list) => list);
-              selectedProject = null;
-              isLoadingProjects = false;
-            });
-          }
-
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Text(l10n.moveToProject),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  InputDecorator(
-                    decoration: InputDecoration(labelText: l10n.workspace),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        value: selectedWorkspaceId,
-                        hint: Text(l10n.selectWorkspaceHint),
-                        items: workspaces
-                            .map((w) => DropdownMenuItem(value: w.id, child: Text(w.name, overflow: TextOverflow.ellipsis)))
-                            .toList(),
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setDialogState(() {
-                            selectedWorkspaceId = value;
-                            selectedWorkspace = workspaces.firstWhere((w) => w.id == value);
-                          });
-                          loadProjects(value);
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  InputDecorator(
-                    decoration: InputDecoration(labelText: l10n.selectProjectLabel),
-                    child: isLoadingProjects
-                        ? const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 8),
-                            child: LinearProgressIndicator(),
-                          )
-                        : DropdownButtonHideUnderline(
-                            child: DropdownButton<ProjectEntity>(
-                              isExpanded: true,
-                              value: selectedProject,
-                              hint: Text(l10n.selectProjectHint),
-                              items: projectsForWorkspace
-                                  .map((p) => DropdownMenuItem(value: p, child: Text(p.name, overflow: TextOverflow.ellipsis)))
-                                  .toList(),
-                              onChanged: selectedWorkspaceId == null
-                                  ? null
-                                  : (value) => setDialogState(() => selectedProject = value),
-                            ),
+      builder: (dialogContext) => BlocProvider(
+        create: (_) => getIt<ProjectPickerCubit>()..loadWorkspaces(),
+        child: BlocConsumer<ProjectPickerCubit, ProjectPickerState>(
+          listener: (cubitContext, pickerState) {
+            if (pickerState.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(pickerState.errorMessage!),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              );
+            }
+          },
+          builder: (cubitContext, pickerState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(l10n.moveToProject),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (pickerState.isLoadingWorkspaces)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else ...[
+                      InputDecorator(
+                        decoration: InputDecoration(labelText: l10n.workspace),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            value: pickerState.selectedWorkspaceId,
+                            hint: Text(l10n.selectWorkspaceHint),
+                            items: pickerState.workspaces
+                                .map((w) => DropdownMenuItem(value: w.id, child: Text(w.name, overflow: TextOverflow.ellipsis)))
+                                .toList(),
+                            onChanged: (value) {
+                              if (value == null) return;
+                              cubitContext.read<ProjectPickerCubit>().selectWorkspace(value);
+                            },
                           ),
-                  ),
-                  if (selectedWorkspaceId != null && !isLoadingProjects && projectsForWorkspace.isEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      l10n.noProjectsInWorkspace,
-                      style: TextStyle(color: Theme.of(dialogContext).colorScheme.error, fontSize: 12),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: selectedProject == null
-                    ? null
-                    : () async {
-                        final project = selectedProject!;
-                        final workspace = selectedWorkspace!;
-                        Navigator.pop(dialogContext);
-
-                        final moveResult = await getIt<MoveTaskToProjectUseCase>()(
-                          taskId: task.id,
-                          newProjectId: project.id,
-                        );
-                        if (!context.mounted) return;
-
-                        moveResult.fold(
-                          (failure) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(failure.message),
-                                backgroundColor: AppColors.error,
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      InputDecorator(
+                        decoration: InputDecoration(labelText: l10n.selectProjectLabel),
+                        child: pickerState.isLoadingProjects
+                            ? const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                child: LinearProgressIndicator(),
+                              )
+                            : DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  isExpanded: true,
+                                  value: pickerState.selectedProjectId,
+                                  hint: Text(l10n.selectProjectHint),
+                                  items: pickerState.projectsForSelectedWorkspace
+                                      .map((p) => DropdownMenuItem(value: p.id, child: Text(p.name, overflow: TextOverflow.ellipsis)))
+                                      .toList(),
+                                  onChanged: pickerState.selectedWorkspaceId == null
+                                      ? null
+                                      : (value) {
+                                          if (value == null) return;
+                                          cubitContext.read<ProjectPickerCubit>().selectProject(value);
+                                        },
+                                ),
                               ),
-                            );
-                          },
-                          (_) {
-                            // منحدّث قائمة الـ Inbox حتى التاسك يختفي منها فوراً.
-                            inboxBloc.add(const TasksLoadRequested(kInboxProjectId));
+                      ),
+                      if (pickerState.selectedWorkspaceId != null &&
+                          !pickerState.isLoadingProjects &&
+                          pickerState.projectsForSelectedWorkspace.isEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          l10n.noProjectsInWorkspace,
+                          style: TextStyle(color: Theme.of(dialogContext).colorScheme.error, fontSize: 12),
+                        ),
+                      ],
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: pickerState.selectedProject == null
+                      ? null
+                      : () {
+                          final project = pickerState.selectedProject!;
+                          final workspace = pickerState.selectedWorkspace;
+                          Navigator.pop(dialogContext);
+
+                          inboxBloc.add(TaskMoveRequested(taskId: task.id, newProjectId: project.id));
+
+                          if (workspace != null) {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (_) => TasksScreen(project: project, workspaceName: workspace.name),
                               ),
                             );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(l10n.taskMovedSuccess(project.name)),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-                child: Text(l10n.moveToProject),
-              ),
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
-            ],
-          );
-        },
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l10n.taskMovedSuccess(project.name)),
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          );
+                        },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                  child: Text(l10n.moveToProject),
+                ),
+                TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

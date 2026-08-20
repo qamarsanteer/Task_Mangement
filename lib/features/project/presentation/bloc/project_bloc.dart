@@ -38,7 +38,11 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     final current = _currentProjects();
     emit(ProjectLoaded(projects: current, isMutating: true));
 
-    final result = await _createProjectUseCase(workspaceId: event.workspaceId, name: event.name);
+    final result = await _createProjectUseCase(
+      workspaceId: event.workspaceId,
+      name: event.name,
+      description: event.description,
+    );
     result.fold(
       (failure) => emit(ProjectError(message: failure.message, projects: current)),
       (newProject) => emit(ProjectLoaded(projects: [...current, newProject])),

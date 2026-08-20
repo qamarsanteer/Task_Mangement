@@ -179,6 +179,34 @@
   "@projectNameLabel": {},
   "projectNameHint": "Enter project name",
   "@projectNameHint": {},
+  "projectDescriptionLabel": "Description (optional)",
+  "@projectDescriptionLabel": {},
+  "projectDescriptionHint": "Add more details about the project",
+  "@projectDescriptionHint": {},
+  "progressLabel": "Progress",
+  "@progressLabel": {},
+  "membersLabel": "Members",
+  "@membersLabel": {},
+  "overdueLabel": "Overdue",
+  "@overdueLabel": {},
+  "notStartedLabel": "Not started",
+  "@notStartedLabel": {},
+  "inProgressLabel": "In progress",
+  "@inProgressLabel": {},
+  "completedLabel": "Completed",
+  "@completedLabel": {},
+  "noDescriptionAdded": "No description added",
+  "@noDescriptionAdded": {},
+  "noMembersYet": "No members yet",
+  "@noMembersYet": {},
+  "noTasksYet": "No tasks yet",
+  "@noTasksYet": {},
+  "pendingInviteLabel": "Pending",
+  "@pendingInviteLabel": {},
+  "tasksCountLabel": "{count} tasks",
+  "@tasksCountLabel": {
+    "placeholders": { "count": {} }
+  },
   "deleteProjectTitle": "Delete Project",
   "@deleteProjectTitle": {},
   "deleteProjectConfirm": "Are you sure you want to delete \"{name}\"?",
@@ -372,5 +400,20 @@
   "planIt": "Plan it",
   "delegateIt": "Delegate it",
   "later": "Later",
-  "boardColumnEmpty": "No tasks in this section"
+  "boardColumnEmpty": "No tasks in this section",
+  "inviteMember": "Invite Member",
+  "projectProperties": "Properties",
+    "invalidEmail": "Please enter a valid email address",
+  "permissionLabel": "Permission",
+  "permissionReadOnly": "Read only",
+  "permissionReadWrite": "Read & write",
+  "send": "Send",
+  "inviteSentMessage": "Invitation sent to {email}",
+  "@inviteSentMessage": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  }
 }

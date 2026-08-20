@@ -179,6 +179,34 @@
   "@projectNameLabel": {},
   "projectNameHint": "أدخل اسم المشروع",
   "@projectNameHint": {},
+  "projectDescriptionLabel": "الوصف (اختياري)",
+  "@projectDescriptionLabel": {},
+  "projectDescriptionHint": "أضف تفاصيل إضافية عن المشروع",
+  "@projectDescriptionHint": {},
+  "progressLabel": "التقدم",
+  "@progressLabel": {},
+  "membersLabel": "الأعضاء",
+  "@membersLabel": {},
+  "overdueLabel": "متأخرة",
+  "@overdueLabel": {},
+  "notStartedLabel": "لم تبدأ",
+  "@notStartedLabel": {},
+  "inProgressLabel": "قيد التنفيذ",
+  "@inProgressLabel": {},
+  "completedLabel": "مكتملة",
+  "@completedLabel": {},
+  "noDescriptionAdded": "لا يوجد وصف مضاف",
+  "@noDescriptionAdded": {},
+  "noMembersYet": "لا يوجد أعضاء بعد",
+  "@noMembersYet": {},
+  "noTasksYet": "لا يوجد تاسكات بعد",
+  "@noTasksYet": {},
+  "pendingInviteLabel": "بانتظار الرد",
+  "@pendingInviteLabel": {},
+  "tasksCountLabel": "{count} تاسك",
+  "@tasksCountLabel": {
+    "placeholders": { "count": {} }
+  },
   "deleteProjectTitle": "حذف مشروع",
   "@deleteProjectTitle": {},
   "deleteProjectConfirm": "هل أنت متأكد أنك تريد حذف \"{name}\"؟",
@@ -372,5 +400,20 @@
   "planIt": "خطّط له",
   "delegateIt": "فوّضه",
   "later": "لاحقاً",
-  "boardColumnEmpty": "لا توجد مهام في هذا القسم"
+  "boardColumnEmpty": "لا توجد مهام في هذا القسم",
+    "inviteMember": "دعوة عضو",
+  "projectProperties": "خصائص",
+    "invalidEmail": "الرجاء إدخال بريد إلكتروني صحيح",
+  "permissionLabel": "الصلاحية",
+  "permissionReadOnly": "قراءة فقط",
+  "permissionReadWrite": "قراءة وكتابة",
+  "send": "إرسال",
+  "inviteSentMessage": "تم إرسال الدعوة إلى {email}",
+  "@inviteSentMessage": {
+    "placeholders": {
+      "email": {
+        "type": "String"
+      }
+    }
+  }
 }

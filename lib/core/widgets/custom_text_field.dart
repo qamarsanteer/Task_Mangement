@@ -13,6 +13,8 @@ class CustomTextField extends StatelessWidget {
   final bool autofocus;
   final TextInputAction? textInputAction;
   final VoidCallback? onEditingComplete;
+  final int? minLines;
+  final int maxLines;
 
   const CustomTextField({
     super.key,
@@ -27,6 +29,8 @@ class CustomTextField extends StatelessWidget {
     this.autofocus = false,
     this.textInputAction,
     this.onEditingComplete,
+    this.minLines,
+    this.maxLines = 1,
   });
 
   @override
@@ -41,6 +45,8 @@ class CustomTextField extends StatelessWidget {
       autofocus: autofocus,
       textInputAction: textInputAction,
       onEditingComplete: onEditingComplete,
+      minLines: minLines,
+      maxLines: isPassword ? 1 : maxLines,
       style: TextStyle(
         color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
         fontSize: 16,

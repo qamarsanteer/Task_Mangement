@@ -10,7 +10,8 @@ class CreateProjectUseCase {
   Future<Either<Failure, ProjectEntity>> call({
     required String workspaceId,
     required String name,
+    String? description,
   }) {
-    return repository.createProject(workspaceId: workspaceId, name: name);
+    return repository.createProject(workspaceId: workspaceId, name: name, description: description);
   }
 }

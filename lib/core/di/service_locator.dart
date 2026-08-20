@@ -42,7 +42,12 @@ import '../../features/project/domain/repositories/project_repository.dart';
 import '../../features/project/domain/usecases/create_project_usecase.dart';
 import '../../features/project/domain/usecases/delete_project_usecase.dart';
 import '../../features/project/domain/usecases/get_projects_usecase.dart';
+import '../../features/project/domain/usecases/invite_project_member_usecase.dart';
+import '../../features/project/domain/usecases/get_project_members_usecase.dart';
+import '../../features/project/presentation/bloc/project_invite_bloc.dart';
+import '../../features/project/presentation/bloc/project_members_bloc.dart';
 import '../../features/project/presentation/bloc/project_bloc.dart';
+import '../../features/project/presentation/cubit/project_picker_cubit.dart';
 
 import '../../features/task/data/datasources/task_remote_data_source.dart';
 import '../../features/task/data/datasources/task_mock_data_source.dart';
@@ -65,6 +70,8 @@ import '../../features/bin/domain/usecases/delete_task_forever_usecase.dart';
 import '../../features/bin/domain/usecases/get_deleted_tasks_usecase.dart';
 import '../../features/bin/domain/usecases/restore_task_usecase.dart';
 import '../../features/bin/presentation/bloc/bin_bloc.dart';
+
+import '../../features/calendar/presentation/bloc/calendar_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -166,10 +173,12 @@ Future<void> setupServiceLocator() async {
   );
   getIt.registerLazySingleton<ProjectRepository>(() => projectRepository);
 
-  // ---------- Project: Use cases ----------
+    // ---------- Project: Use cases ----------
   getIt.registerLazySingleton(() => GetProjectsUseCase(getIt()));
   getIt.registerLazySingleton(() => CreateProjectUseCase(getIt()));
   getIt.registerLazySingleton(() => DeleteProjectUseCase(getIt()));
+  getIt.registerLazySingleton(() => InviteProjectMemberUseCase(getIt()));
+  getIt.registerLazySingleton(() => GetProjectMembersUseCase(getIt()));
 
   // ---------- Project: Bloc ----------
   getIt.registerFactory(
@@ -177,6 +186,20 @@ Future<void> setupServiceLocator() async {
       getProjectsUseCase: getIt(),
       createProjectUseCase: getIt(),
       deleteProjectUseCase: getIt(),
+    ),
+  );
+  getIt.registerFactory(
+    () => ProjectInviteBloc(inviteProjectMemberUseCase: getIt()),
+  );
+  getIt.registerFactory(
+    () => ProjectMembersBloc(getProjectMembersUseCase: getIt()),
+  );
+
+  // ---------- Project: Picker Cubit ----------
+  getIt.registerFactory(
+    () => ProjectPickerCubit(
+      getWorkspacesUseCase: getIt(),
+      getProjectsUseCase: getIt(),
     ),
   );
 
@@ -236,6 +259,18 @@ Future<void> setupServiceLocator() async {
       getDeletedTasksUseCase: getIt(),
       restoreTaskUseCase: getIt(),
       deleteTaskForeverUseCase: getIt(),
+    ),
+  );
+
+  // ---------- Calendar: Bloc ----------
+  getIt.registerFactory(
+    () => CalendarBloc(
+      getWorkspacesUseCase: getIt(),
+      getProjectsUseCase: getIt(),
+      getTasksUseCase: getIt(),
+      createTaskUseCase: getIt(),
+      deleteTaskUseCase: getIt(),
+      uploadTaskAttachmentsUseCase: getIt(),
     ),
   );
 
