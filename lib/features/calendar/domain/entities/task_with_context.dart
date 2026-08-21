@@ -1,8 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../../task/domain/entities/task_entity.dart';
 
-/// تاسك مع سياقه (بأي مشروع وبأي ورك سبيس هو)، حتى نقدر نعرضه بشاشة
-/// الكالندر يلي بتجمع تاسكات من كل المشاريع/الورك سبيسات مع بعض.
 class TaskWithContext extends Equatable {
   final TaskEntity task;
   final String projectId;

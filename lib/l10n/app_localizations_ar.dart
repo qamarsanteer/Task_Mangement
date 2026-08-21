@@ -84,7 +84,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get bin => 'سلة المحذوفات';
 
   @override
-  String get deletedTasks => 'المهام المحذوفة';
+  String get deletedTasks => 'المهمات المحذوفة';
 
   @override
   String get restore => 'استعادة';
@@ -279,6 +279,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get notStartedLabel => 'لم تبدأ';
 
   @override
+  String get pendingLabel => 'قيد الانتظار';
+
+  @override
   String get inProgressLabel => 'قيد التنفيذ';
 
   @override
@@ -375,6 +378,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get taskStatusNotStarted => 'لم تبدأ';
 
   @override
+  String get taskStatusPending => 'قيد الانتظار';
+
+  @override
   String get taskStatusInProgress => 'قيد التنفيذ';
 
   @override
@@ -397,6 +403,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get viewCalendar => 'التقويم';
+
+  @override
+  String get timelineNoTimeSection => 'بدون وقت محدد';
+
+  @override
+  String timelineShowAll(Object count) {
+    return 'عرض الكل ($count)';
+  }
+
+  @override
+  String get timelineShowLess => 'طي';
 
   @override
   String get taskDetails => 'تفاصيل المهمة';
@@ -623,6 +640,50 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get send => 'إرسال';
+
+  @override
+  String get deletedProjects => 'المشاريع المحذوفة';
+
+  @override
+  String get noDeletedProjects => 'لا يوجد مشاريع محذوفة';
+
+  @override
+  String get viewTasks => 'عرض المهمات';
+
+  @override
+  String get close => 'إغلاق';
+
+  @override
+  String get projectRestored => 'تم استعادة المشروع بنجاح';
+
+  @override
+  String get deleteProjectForever => 'حذف المشروع نهائياً';
+
+  @override
+  String projectDeleteWarning(Object count) {
+    return 'هاد المشروع فيه $count مهمة. رح ينحذفوا كلهم للأبد.';
+  }
+
+  @override
+  String get projectDeletedForever => 'تم حذف المشروع نهائياً';
+
+  @override
+  String get tasks => 'مهمة';
+
+  @override
+  String get startDateLabel => 'تاريخ بدء العمل';
+
+  @override
+  String get selectStartDate => 'اختر تاريخ البدء';
+
+  @override
+  String get startTimeLabel => 'ساعة البدء (اختياري)';
+
+  @override
+  String get selectStartTime => 'اختر الساعة';
+
+  @override
+  String get editStartDate => 'تعديل تاريخ وساعة البدء';
 
   @override
   String inviteSentMessage(String email) {

@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../core/di/service_locator.dart';
+import '../../../../core/events/task_changes_bus.dart';
 import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../workspace/domain/entities/workspace_entity.dart';
@@ -10,7 +13,6 @@ import '../bloc/project_bloc.dart';
 import '../bloc/project_event.dart';
 import '../bloc/project_state.dart';
 import '../../../task/presentation/screens/tasks_screen.dart';
-import '../../domain/entities/project_member_role.dart';
 import '../bloc/project_invite_bloc.dart';
 import '../bloc/project_invite_event.dart';
 import '../bloc/project_invite_state.dart';
@@ -40,7 +42,22 @@ class _ProjectsView extends StatefulWidget {
 class _ProjectsViewState extends State<_ProjectsView> {
   final Set<String> _selectedIds = {};
   bool _isSelectionMode = false;
+  StreamSubscription<String>? _projectChangesSub;
+  @override
+  void initState() {
+    super.initState();
+    _projectChangesSub = getIt<TaskChangesBus>().onProjectChanged.listen((_) {
+      if (mounted) {
+        context.read<ProjectBloc>().add(ProjectsLoadRequested(widget.workspace.id));
+      }
+    });
+  }
 
+  @override
+  void dispose() {
+    _projectChangesSub?.cancel(); 
+    super.dispose();
+  }
   void _toggleSelection(String id) {
     setState(() {
       if (_selectedIds.contains(id)) {
@@ -85,7 +102,11 @@ class _ProjectsViewState extends State<_ProjectsView> {
         actions: [
           ElevatedButton(
             onPressed: () {
-              bloc.add(ProjectsDeleteRequested(_selectedIds.toList()));
+              bloc.add(ProjectsDeleteRequested(
+                _selectedIds.toList(),
+                workspaceId: widget.workspace.id,
+                workspaceName: widget.workspace.name,
+              ));
               Navigator.pop(dialogContext);
               _clearSelection();
             },
@@ -151,7 +172,6 @@ class _ProjectsViewState extends State<_ProjectsView> {
   void _showInviteMemberDialog(BuildContext context, AppLocalizations l10n, String projectId) {
     final controller = TextEditingController();
     final formKey = GlobalKey<FormState>();
-    ProjectMemberRole selectedRole = ProjectMemberRole.readOnly;
 
     showDialog(
       context: context,
@@ -211,32 +231,6 @@ class _ProjectsViewState extends State<_ProjectsView> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          l10n.permissionLabel,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      RadioListTile<ProjectMemberRole>(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(l10n.permissionReadOnly),
-                        value: ProjectMemberRole.readOnly,
-                        groupValue: selectedRole,
-                        onChanged: isLoading
-                            ? null
-                            : (value) => setDialogState(() => selectedRole = value!),
-                      ),
-                      RadioListTile<ProjectMemberRole>(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(l10n.permissionReadWrite),
-                        value: ProjectMemberRole.readWrite,
-                        groupValue: selectedRole,
-                        onChanged: isLoading
-                            ? null
-                            : (value) => setDialogState(() => selectedRole = value!),
-                      ),
                     ],
                   ),
                 ),
@@ -250,7 +244,6 @@ class _ProjectsViewState extends State<_ProjectsView> {
                                     ProjectInviteMemberRequested(
                                       projectId: projectId,
                                       email: controller.text.trim(),
-                                      role: selectedRole,
                                     ),
                                   );
                             }
@@ -539,7 +532,6 @@ class _ProjectsViewState extends State<_ProjectsView> {
                 hint: l10n.projectDescriptionHint,
                 minLines: 2,
                 maxLines: 4,
-                // اختياري: بدون validator، المشروع بينخلق حتى لو ترك الوصف فاضي
               ),
             ],
           ),
@@ -580,7 +572,12 @@ class _ProjectsViewState extends State<_ProjectsView> {
         actions: [
           ElevatedButton(
             onPressed: () {
-              bloc.add(ProjectDeleteRequested(project.id));
+              // ═══ عدّل هون ═══
+              bloc.add(ProjectDeleteRequested(
+                project.id,
+                workspaceId: widget.workspace.id,
+                workspaceName: widget.workspace.name,
+              ));
               Navigator.pop(dialogContext);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),

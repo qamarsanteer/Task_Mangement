@@ -1,7 +1,6 @@
 import '../models/workspace_model.dart';
 import 'workspace_remote_data_source.dart';
 
-/// نسخة وهمية (mock) — بتحتفظ بالبيانات بالذاكرة طول ما التطبيق شغال
 class WorkspaceMockDataSource implements WorkspaceRemoteDataSource {
   final List<WorkspaceModel> _workspaces = [
     WorkspaceModel(id: '1', name: 'Workspace 1', createdAt: DateTime.now()),

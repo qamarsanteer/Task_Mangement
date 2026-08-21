@@ -9,6 +9,8 @@ class TaskModel extends TaskEntity {
     super.isImportant = false,
     super.isUrgent = false,
     super.dueDate,
+    super.startDate,
+    super.hasStartTime = false,
     required super.projectId,
     super.createdAt,
     super.labelId,
@@ -25,6 +27,8 @@ class TaskModel extends TaskEntity {
       isImportant: json['is_important'] ?? json['isImportant'] ?? false,
       isUrgent: json['is_urgent'] ?? json['isUrgent'] ?? false,
       dueDate: json['due_date'] != null ? DateTime.tryParse(json['due_date'].toString()) : null,
+      startDate: json['start_date'] != null ? DateTime.tryParse(json['start_date'].toString()) : null,
+      hasStartTime: json['has_start_time'] as bool? ?? json['hasStartTime'] as bool? ?? false,
       projectId: json['project_id']?.toString() ?? json['projectId']?.toString() ?? '',
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'].toString()) : null,
       labelId: json['label_id']?.toString() ?? json['labelId']?.toString(),
@@ -35,6 +39,8 @@ class TaskModel extends TaskEntity {
 
   static TaskStatus _statusFromString(String? value) {
     switch (value) {
+      case 'pending':
+        return TaskStatus.pending;
       case 'in_progress':
       case 'inProgress':
         return TaskStatus.inProgress;
@@ -52,6 +58,8 @@ class TaskModel extends TaskEntity {
     switch (status) {
       case TaskStatus.notStarted:
         return 'not_started';
+      case TaskStatus.pending:
+        return 'pending';
       case TaskStatus.inProgress:
         return 'in_progress';
       case TaskStatus.completed:
@@ -95,6 +103,8 @@ class TaskModel extends TaskEntity {
       'is_important': isImportant,
       'is_urgent': isUrgent,
       if (dueDate != null) 'due_date': dueDate!.toIso8601String(),
+      if (startDate != null) 'start_date': startDate!.toIso8601String(), 
+      'has_start_time': hasStartTime,
       'project_id': projectId,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (labelId != null) 'label_id': labelId,

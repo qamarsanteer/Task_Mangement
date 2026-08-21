@@ -3,9 +3,6 @@ import '../../../workspace/domain/usecases/get_workspaces_usecase.dart';
 import '../../domain/usecases/get_projects_usecase.dart';
 import 'project_picker_state.dart';
 
-/// Cubit خفيف بيدير ثلاث خطوات شائعة: تحميل الورك سبيسات، تحميل مشاريع
-/// أي ورك سبيس يتم اختياره، وتخزين اختيار المشروع النهائي — كل شي
-/// بمكان واحد (الحالة)، بدون أي state محلي موازي بالـ UI.
 class ProjectPickerCubit extends Cubit<ProjectPickerState> {
   final GetWorkspacesUseCase _getWorkspacesUseCase;
   final GetProjectsUseCase _getProjectsUseCase;

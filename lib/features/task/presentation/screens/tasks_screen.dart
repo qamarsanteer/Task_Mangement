@@ -20,6 +20,7 @@ import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
 import 'task_detail_screen.dart';
 import 'board_view_screen.dart';
+import 'timeline_view_screen.dart';
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -33,9 +34,6 @@ import '../../../../core/events/task_changes_bus.dart';
 
 class TasksScreen extends StatelessWidget {
   final ProjectEntity project;
-  // اسم الـ workspace اللي المشروع تابع إلها — لازم يوصل من الشاشة اللي
-  // فتحت TasksScreen (ProjectsScreen)، لأنه ProjectEntity ما فيها اسم
-  // الـ workspace، بس id تبعها. منستخدمو كـ Snapshot وقت حذف أي تاسك.
   final String workspaceName;
   const TasksScreen({super.key, required this.project, required this.workspaceName});
 
@@ -65,11 +63,6 @@ class _TasksViewState extends State<_TasksView> {
   @override
   void initState() {
     super.initState();
-    // منستمع لأي تغيير صار على هالمشروع من شاشة تانية كليًا (متل
-    // استرجاع تاسك من BinScreen، أو نقل تاسك من Inbox لمشروع تاني)،
-    // حتى لو هاد الـ Widget كان محفوظ حي بالذاكرة بس مش ظاهر عالشاشة
-    // هلق (متل تاب الـ Inbox جوا IndexedStack) — وإلا التغيير ما رح
-    // ينعكس أبداً هون لحد ما تنعاد بناء الشاشة من الصفر.
     _taskChangesSubscription = getIt<TaskChangesBus>().onProjectChanged.listen((changedProjectId) {
       if (changedProjectId == widget.project.id && mounted) {
         context.read<TaskBloc>().add(TasksLoadRequested(widget.project.id));
@@ -183,10 +176,6 @@ class _TasksViewState extends State<_TasksView> {
               actions: [
                 IconButton(icon: const Icon(Icons.search), onPressed: () => _showComingSoon(context, l10n)),
                 IconButton(icon: const Icon(Icons.filter_list), onPressed: () => _showComingSoon(context, l10n)),
-                // بالـ Inbox ما في "Views" (List/Board/Calendar) لأنه مش
-                // مشروع حقيقي، فالأيقونة هون بتضل ظاهرة بس شكل فقط
-                // (onPressed فاضي، مش null) حتى تضل بنفس شكلها الطبيعي
-                // (مش رمادية/معطّلة) بس بدون ما تفتح أي قائمة فعلياً.
                 IconButton(
                   icon: const Icon(Icons.more_vert),
                   onPressed: widget.project.id == kInboxProjectId
@@ -303,9 +292,6 @@ class _TasksViewState extends State<_TasksView> {
           }
         },
         onLongPress: () {
-          // بالـ Inbox، الضغطة الطويلة مالها معنى "حدد كذا تاسك بدفعة
-          // وحدة" متل جوا مشروع عادي — إلها معنى مختلف تماماً: "شو بدك
-          // تعمل بهاد التاسك يلي لسا ما محدد إلو مشروع؟" (حذف أو نقل).
           if (widget.project.id == kInboxProjectId) {
             _showInboxTaskOptions(context, l10n, task);
           } else {
@@ -315,7 +301,6 @@ class _TasksViewState extends State<_TasksView> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // checkbox أو زر الحذف الفردي
             _isSelectionMode
                 ? Checkbox(
                     value: isSelected,
@@ -328,7 +313,6 @@ class _TasksViewState extends State<_TasksView> {
                     onPressed: () => _confirmDeleteTask(context, l10n, task),
                   ),
 
-            // العنوان
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
@@ -344,7 +328,6 @@ class _TasksViewState extends State<_TasksView> {
               ),
             ),
 
-            // الثلاث مؤشرات
             if (!_isSelectionMode)
               Padding(
                 padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
@@ -429,9 +412,9 @@ class _TasksViewState extends State<_TasksView> {
     final formKey = GlobalKey<FormState>();
     final bloc = context.read<TaskBloc>();
 
-    DateTime? selectedDate;
-    // الأولوية صارت محورين مستقلين، كل واحد فيهم إجباري وإله قيمة افتراضية
-    // واضحة (مهم/عاجل) — المستخدم بيقدر يبدلها لكن ما فيه حالة "بدون قيمة".
+    DateTime? selectedDate; 
+    DateTime? selectedStartDate; 
+    TimeOfDay? selectedStartTime; 
     bool isImportant = true;
     bool isUrgent = true;
     String? selectedLabelId;
@@ -465,6 +448,57 @@ class _TasksViewState extends State<_TasksView> {
                     hint: l10n.taskDescriptionHint,
                   ),
                   const SizedBox(height: 16),
+
+                  FormField<DateTime>(
+                    initialValue: selectedStartDate,
+                    validator: (value) => value == null ? l10n.requiredField : null,
+                    builder: (field) => InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: dialogContext,
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime.now().subtract(const Duration(days: 1)),
+                          lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                        );
+                        if (picked != null) {
+                          setState(() => selectedStartDate = picked);
+                          field.didChange(picked);
+                        }
+                      },
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: l10n.startDateLabel,
+                          errorText: field.errorText,
+                        ),
+                        child: Text(selectedStartDate != null ? _formatFullDate(selectedStartDate!) : l10n.selectStartDate),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  FormField<TimeOfDay>(
+                    initialValue: selectedStartTime,
+                    builder: (field) => InkWell(
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: dialogContext,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (picked != null) {
+                          setState(() => selectedStartTime = picked);
+                          field.didChange(picked);
+                        }
+                      },
+                      child: InputDecorator(
+                        decoration: InputDecoration(
+                          labelText: l10n.startTimeLabel,
+                        ),
+                        child: Text(selectedStartTime != null ? selectedStartTime!.format(dialogContext) : l10n.selectStartTime),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
                   FormField<DateTime>(
                     initialValue: selectedDate,
                     validator: (value) => value == null ? l10n.requiredField : null,
@@ -491,8 +525,6 @@ class _TasksViewState extends State<_TasksView> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // ─── الأهمية والاستعجال صاروا محورين مستقلين، كل واحد
-                  // فيهم اختيار إجباري بين قيمتين، بدل تشيك بوكس اختياري ───
                   SegmentedToggle(
                     label: l10n.importanceLabel,
                     trueLabel: l10n.important,
@@ -528,10 +560,6 @@ class _TasksViewState extends State<_TasksView> {
                               selectedColor: Color(label.colorValue),
                               labelStyle: TextStyle(color: selected ? Colors.white : null, fontSize: 12),
                               onSelected: (_) {
-                                // ما منسمحش نلغي التحديد ونرجع لـ null هون —
-                                // التصنيف صار حقل إجباري، فلازم يضل في تصنيف
-                                // محدد دايماً (المستخدم بس بيقدر يبدّل التصنيف
-                                // مش يمسحه بالكامل).
                                 final newValue = label.id;
                                 setState(() => selectedLabelId = newValue);
                                 field.didChange(newValue);
@@ -560,23 +588,13 @@ class _TasksViewState extends State<_TasksView> {
                     onPressed: () async {
                       final result = await FilePicker.platform.pickFiles(allowMultiple: true, withData: true);
                       if (result != null) {
-                        // على الويب (Chrome) الـ file_picker ما بيرجّع path أبداً (بيرجع null)،
-                        // فلازم نرجع لاسم الملف كـ fallback، وإلا القائمة بتضل فاضية بصمت.
                         final selected = result.files.map((f) => kIsWeb ? f.name : (f.path ?? f.name)).toList();
-                        // منخزّن محتوى الملف (bytes) بالذاكرة حتى نقدر نفتحه/نعاينه لاحقاً
-                        // من شاشة تفاصيل التاسك (شوفي attachment_bytes_cache.dart).
                         for (final f in result.files) {
                           if (f.bytes != null) {
                             AttachmentBytesCache.instance.put(kIsWeb ? f.name : (f.path ?? f.name), f.bytes!);
                           }
                         }
                         setState(() {
-                          // منضيف الملفات الجداد لقائمة الملفات المختارة سابقاً بدل
-                          // ما نستبدلها بالكامل — قبل هيك، لو المستخدم ضغط زر
-                          // الإرفاق أكتر من مرة (مثلاً حتى يضيف مرفقات بدفعات)، كانت
-                          // آخر دفعة تلغي/تمسح الدفعات يلي قبلها، وهيك عملياً كان
-                          // التاسك بينخلق بمرفق واحد بس مهما حاول المستخدم يضيف أكتر.
-                          // منستبعد أي مسار موجود مسبقاً حتى ما نكرر نفس الملف مرتين.
                           for (final path in selected) {
                             if (!attachmentPaths.contains(path)) {
                               attachmentPaths.add(path);
@@ -615,6 +633,13 @@ class _TasksViewState extends State<_TasksView> {
             ElevatedButton(
               onPressed: () {
                 if (formKey.currentState!.validate()) {
+                  final combinedStartDate = DateTime(
+                    selectedStartDate!.year,
+                    selectedStartDate!.month,
+                    selectedStartDate!.day,
+                    selectedStartTime?.hour ?? 0,
+                    selectedStartTime?.minute ?? 0,
+                  );
                   bloc.add(TaskCreateRequested(
                     projectId: widget.project.id,
                     title: titleController.text.trim(),
@@ -622,6 +647,8 @@ class _TasksViewState extends State<_TasksView> {
                     isImportant: isImportant,
                     isUrgent: isUrgent,
                     dueDate: selectedDate,
+                    startDate: combinedStartDate,
+                    hasStartTime: selectedStartTime != null,
                     labelId: selectedLabelId,
                     repeatFrequency: repeatFrequency,
                     attachmentPaths: attachmentPaths,
@@ -692,9 +719,6 @@ class _TasksViewState extends State<_TasksView> {
     );
   }
 
-    /// بالـ Inbox، الضغطة الطويلة عالتاسك بتفتح بوتوم شيت فيها خيارين:
-  /// حذف (نقل لسلة المحذوفات)، أو نقل التاسك لمشروع محدد (وقتها بيصير
-  /// إلو مشروع فعلي وبينشال من الـ Inbox).
   void _showInboxTaskOptions(BuildContext context, AppLocalizations l10n, TaskEntity task) {
     showModalBottomSheet(
       context: context,
@@ -897,7 +921,22 @@ class _TasksViewState extends State<_TasksView> {
                   );
                 },
               ),
-              ListTile(leading: const Icon(Icons.view_timeline_outlined), title: Text(l10n.viewTimeline), onTap: () { Navigator.pop(sheetContext); _showComingSoon(context, l10n); }),
+              ListTile(
+                leading: const Icon(Icons.view_timeline_outlined),
+                title: Text(l10n.viewTimeline),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TimelineViewScreen(
+                        project: widget.project,
+                        workspaceName: widget.workspaceName,
+                      ),
+                    ),
+                  );
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.calendar_month_outlined),
                 title: Text(l10n.viewCalendar),

@@ -65,7 +65,6 @@ class AuthRepositoryImpl implements AuthRepository, Syncable {
 
   @override
   Future<Either<Failure, String>> uploadPhoto(String userId, String photoPath) async {
-    // رفع صورة محتاج اتصال فعلي بالسيرفر، ما منعمله أوفلاين.
     try {
       final photoUrl = await _remoteDataSource.uploadPhoto(userId, photoPath);
       return Right(photoUrl);
@@ -87,14 +86,12 @@ class AuthRepositoryImpl implements AuthRepository, Syncable {
         debugPrint('[Auth] getCurrentUser: من السيرفر → ${user.fullName} (${user.email})');
         return Right(user);
       } on DioException catch (e) {
-        // في نت بس الطلب فشل (سيرفر واقع، تايم آوت..) → نرجع لآخر نسخة بالكاش
         return _readCachedUser() ?? Left(DioErrorMapper.map(e));
       } catch (e) {
         return _readCachedUser() ?? Left(UnknownFailure(e.toString()));
       }
     }
 
-    // ما في نت → منرجع آخر بيانات محفوظة بالكاش
     final cached = _readCachedUser();
     debugPrint('[Auth] getCurrentUser: بدون نت → من الكاش (${cached != null ? "موجود" : "غير موجود"})');
     return cached ??
@@ -122,8 +119,6 @@ class AuthRepositoryImpl implements AuthRepository, Syncable {
       }
     }
 
-    // ما في نت → نحدّث الكاش محلياً فوراً (عشان الشاشة تنعكس فوراً)
-    // ونخزّن التعديل كـ Pending حتى الـ SyncManager يبعته لما يرجع النت.
     final cachedJson = _cache.getObject(_cachedUserKey);
     if (cachedJson == null) {
       return const Left(NetworkFailure('لا يوجد اتصال بالإنترنت.'));
@@ -140,7 +135,6 @@ class AuthRepositoryImpl implements AuthRepository, Syncable {
     return Right(updatedUser);
   }
 
-  // ─── Syncable ───
 
   @override
   Future<void> syncPendingChanges() async {
@@ -155,10 +149,10 @@ class AuthRepositoryImpl implements AuthRepository, Syncable {
     );
     await _cacheUser(user);
     await _cache.remove(_pendingProfileUpdateKey);
-    debugPrint('[Auth] syncPendingChanges: تمّت المزامنة ✅');
+    debugPrint('[Auth] syncPendingChanges: تمّت المزامنة ');
   }
 
-  // ─── Helpers ───
+
 
   Future<void> _cacheUser(UserEntity user) async {
     final model = user is UserModel

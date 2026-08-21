@@ -120,9 +120,6 @@ class _CalendarViewState extends State<_CalendarView> {
         ),
       ),
     );
-    // بعد الرجوع من شاشة التفاصيل، ممكن يكون في تعديل صار على التاسك
-    // (تغيير حالة، تعديل تاريخ، حذف...) فمنعيد التحميل حتى الكالندر
-    // يضل متوافق مع آخر تحديث.
     if (mounted) _loadTasks();
   }
 
@@ -136,8 +133,6 @@ class _CalendarViewState extends State<_CalendarView> {
       appBar: AppBar(
         title: Text(l10n.calendar),
         actions: [
-          // زر البحث هون شكلي بس، متل زر البحث بشاشة Inbox/Project
-          // (ما في بحث فعلي مطبّق بالتطبيق حالياً بأي واجهة).
           IconButton(icon: const Icon(Icons.search), onPressed: () => _showComingSoon(context, l10n)),
           if (!isToday)
             TextButton(
@@ -901,8 +896,6 @@ class _CalendarViewState extends State<_CalendarView> {
                     inboxLabel: l10n.inbox,
                   ));
 
-                  // منروّح تلقائياً لتاريخ استحقاق التاسك الجديد (لو محدد)
-                  // حتى يبين فوراً بلستة "تاسكات هاد اليوم".
                   if (selectedDate != null) {
                     _selectDate(DateTime(selectedDate!.year, selectedDate!.month, selectedDate!.day));
                   }

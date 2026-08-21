@@ -13,6 +13,8 @@ abstract class TaskRemoteDataSource {
     bool isImportant,
     bool isUrgent,
     DateTime? dueDate,
+    DateTime? startDate,
+    bool hasStartTime,
     String? labelId,
     RepeatFrequency repeatFrequency,
   });
@@ -26,6 +28,8 @@ abstract class TaskRemoteDataSource {
     bool isImportant,
     bool isUrgent,
     DateTime? dueDate,
+    DateTime? startDate,
+    bool? hasStartTime,
     String? labelId,
     RepeatFrequency repeatFrequency,
   });
@@ -36,10 +40,6 @@ abstract class TaskRemoteDataSource {
 
   Future<void> deleteTask(String taskId);
 
-  /// نقل التاسك لمشروع تاني عالسيرفر (أو الموك) — كانت ناقصة أصلاً،
-  /// وهيك moveTaskToProject بالـ Repository كان عم يعدّل الكاش المحلي
-  /// بس بدون ما يخبر السيرفر، فأي getTasks() جاي بعدها وهو أونلاين كان
-  /// عم يمسح التعديل ويرجّع التاسك لمكانه القديم.
   Future<TaskModel> updateTaskProject({required String taskId, required String newProjectId});
 }
 
@@ -63,6 +63,8 @@ class TaskRemoteDataSourceImpl implements TaskRemoteDataSource {
     bool isImportant = false,
     bool isUrgent = false,
     DateTime? dueDate,
+    DateTime? startDate,
+    bool hasStartTime = false,
     String? labelId,
     RepeatFrequency repeatFrequency = RepeatFrequency.none,
   }) async {
@@ -72,6 +74,8 @@ class TaskRemoteDataSourceImpl implements TaskRemoteDataSource {
       'is_important': isImportant,
       'is_urgent': isUrgent,
       if (dueDate != null) 'due_date': dueDate.toIso8601String(),
+      if (startDate != null) 'start_date': startDate.toIso8601String(),
+      'has_start_time': hasStartTime,
       if (labelId != null) 'label_id': labelId,
       'repeat_frequency': TaskModel.repeatToString(repeatFrequency),
     });
@@ -94,17 +98,19 @@ class TaskRemoteDataSourceImpl implements TaskRemoteDataSource {
     bool isImportant = false,
     bool isUrgent = false,
     DateTime? dueDate,
+    DateTime? startDate,
+    bool? hasStartTime,
     String? labelId,
     RepeatFrequency repeatFrequency = RepeatFrequency.none,
   }) async {
-    // منبعت description / due_date / label_id حتى لو null، حتى يقدر
-    // المستخدم يمسح قيمة كانت موجودة (متل حذف تاريخ الاستحقاق).
     final response = await _dioClient.put('/tasks/$taskId', data: {
       'title': title,
       'description': description,
       'is_important': isImportant,
       'is_urgent': isUrgent,
       'due_date': dueDate?.toIso8601String(),
+      'start_date': startDate?.toIso8601String(),
+      if (hasStartTime != null) 'has_start_time': hasStartTime,
       'label_id': labelId,
       'repeat_frequency': TaskModel.repeatToString(repeatFrequency),
     });

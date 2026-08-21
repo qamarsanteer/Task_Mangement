@@ -4,23 +4,10 @@ import 'dart:typed_data';
 import 'package:archive/archive.dart';
 import 'package:xml/xml.dart';
 
-/// أداة لاستخراج نص/بيانات قابلة للقراءة من ملفات Office Open XML
-/// (Word .docx، PowerPoint .pptx، Excel .xlsx). هاي الصيغ الثلاثة
-/// أصلاً عبارة عن أرشيف ZIP فيه ملفات XML جوا، فمنقدر نستخرج منها
-/// المحتوى بدون أي مكتبة متخصصة "تفتح" ملفات Office فعلياً —
-/// يعني بدون تنسيقات/صور/جداول متقدمة، بس نص وبيانات خام قابلة
-/// للقراءة والنسخ داخل التطبيق.
-///
-/// **مطلوب إضافة هاد الاعتمادين لـ pubspec.yaml إذا مش موجودين أصلاً:**
-/// ```yaml
-/// dependencies:
-///   archive: ^3.6.1
-///   xml: ^6.5.0
-/// ```
+
 class OfficeDocumentExtractor {
   OfficeDocumentExtractor._();
 
-  /// بيرجع النص الكامل لملف Word (.docx)، فقرة بفقرة.
   static String extractDocx(Uint8List bytes) {
     final archive = ZipDecoder().decodeBytes(bytes);
     final documentFile = _findFile(archive, 'word/document.xml');
@@ -37,7 +24,6 @@ class OfficeDocumentExtractor {
     return buffer.toString().trim();
   }
 
-  /// بيرجع نص كل سلايد بملف PowerPoint (.pptx)، مرتّبة حسب رقم السلايد.
   static String extractPptx(Uint8List bytes) {
     final archive = ZipDecoder().decodeBytes(bytes);
     final slideFiles = archive.files
@@ -60,13 +46,9 @@ class OfficeDocumentExtractor {
     return buffer.toString().trim();
   }
 
-  /// بيرجع أول Sheet بملف Excel (.xlsx) كجدول صفوف/أعمدة نصّية — بدون
-  /// صيغ (formulas) محسوبة أو تنسيقات، بس القيم الظاهرة/الخام.
   static List<List<String>> extractXlsxFirstSheet(Uint8List bytes) {
     final archive = ZipDecoder().decodeBytes(bytes);
 
-    // الإكسل بيخزّن النصوص المتكررة بجدول مشترك (sharedStrings.xml)
-    // وبيرجّع بالخلية بس رقم index إلها جوا هداك الجدول.
     final sharedStrings = <String>[];
     final sharedStringsFile = _findFile(archive, 'xl/sharedStrings.xml');
     if (sharedStringsFile != null) {

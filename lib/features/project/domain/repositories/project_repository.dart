@@ -1,7 +1,6 @@
 import 'package:dartz/dartz.dart';
 import '../../../../core/error/failure.dart';
 import '../entities/project_entity.dart';
-import '../entities/project_member_role.dart';
 import '../entities/project_member_entity.dart';
 
 abstract class ProjectRepository {
@@ -13,12 +12,15 @@ abstract class ProjectRepository {
     String? description,
   });
 
-  Future<Either<Failure, void>> deleteProject(String projectId);
+  Future<Either<Failure, void>> deleteProject(
+    String projectId, {
+    required String workspaceId,
+    required String workspaceName,
+  });
 
   Future<Either<Failure, void>> inviteMember({
     required String projectId,
     required String email,
-    required ProjectMemberRole role,
   });
 
   Future<Either<Failure, List<ProjectMemberEntity>>> getMembers(String projectId);

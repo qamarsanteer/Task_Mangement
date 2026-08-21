@@ -25,8 +25,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-/// شاشات التابات الأربعة، معزولة بـ Widget لحالها حتى نقدر نحتفظ بحالة
-/// خاصة فيها (شوفي _calendarInstanceId تحت) بدون ما نأثر على HomeScreen.
 class _HomeTabs extends StatefulWidget {
   const _HomeTabs();
 
@@ -35,13 +33,6 @@ class _HomeTabs extends StatefulWidget {
 }
 
 class _HomeTabsState extends State<_HomeTabs> {
-  // ─── تاب الكالندر بيضل موجود بالذاكرة طول الوقت بسبب IndexedStack (حتى
-  // لو المستخدم مش واقف فيه)، فلو ضاف تاسك من تاب تاني (مثلاً من
-  // Workspace) ورجع عالكالندر، الكالندر كان عم يضل عارض نفس البيانات
-  // القديمة يلي جابها أول مرة انفتح، لأنه ما في أي إشعار إله إنه في
-  // بيانات جديدة. الحل: كل مرة يضغط المستخدم على تاب الكالندر، منبدّل
-  // الـ key تبعو، وهيك Flutter بيهدم النسخة القديمة وينشئ نسخة جديدة
-  // من الصفر (initState بيرجع يشتغل)، فبيعيد تحميل كل التاسكات طازة.
   int _calendarInstanceId = 0;
 
   @override
@@ -57,10 +48,6 @@ class _HomeTabsState extends State<_HomeTabs> {
           index: currentIndex,
           children: [
             const WorkspacesScreen(),
-            // تاب الـ Inbox: مش شاشة خاصة، هو أصلاً TasksScreen عادية بس
-            // بمشروع "وهمي" (pseudo-project) معرّفه kInboxProjectId وما
-            // إلو workspace حقيقي — هيك منستفيد من كل منطق إضافة/عرض/حذف
-            // التاسكات الجاهز بـ TasksScreen بدون ما نعيد كتابته من الصفر.
             TasksScreen(
               project: ProjectEntity(id: kInboxProjectId, name: l10n.inbox, workspaceId: ''),
               workspaceName: l10n.inbox,

@@ -21,6 +21,8 @@ class TaskCreateRequested extends TaskEvent {
   final bool isImportant;
   final bool isUrgent;
   final DateTime? dueDate;
+  final DateTime? startDate;
+  final bool hasStartTime;
   final String? labelId;
   final RepeatFrequency repeatFrequency;
   final List<String> attachmentPaths;
@@ -32,6 +34,8 @@ class TaskCreateRequested extends TaskEvent {
     this.isImportant = false,
     this.isUrgent = false,
     this.dueDate,
+     this.startDate,
+    this.hasStartTime = false,
     this.labelId,
     this.repeatFrequency = RepeatFrequency.none,
     this.attachmentPaths = const [],
@@ -39,7 +43,7 @@ class TaskCreateRequested extends TaskEvent {
 
   @override
   List<Object?> get props =>
-      [projectId, title, description, isImportant, isUrgent, dueDate, labelId, repeatFrequency, attachmentPaths];
+      [projectId, title, description, isImportant, isUrgent, startDate, hasStartTime, dueDate, labelId, repeatFrequency, attachmentPaths];
 }
 
 class TaskUpdateRequested extends TaskEvent {
@@ -49,6 +53,8 @@ class TaskUpdateRequested extends TaskEvent {
   final bool isImportant;
   final bool isUrgent;
   final DateTime? dueDate;
+  final DateTime? startDate;
+  final bool? hasStartTime;
   final String? labelId;
   final RepeatFrequency repeatFrequency;
 
@@ -59,18 +65,17 @@ class TaskUpdateRequested extends TaskEvent {
     this.isImportant = false,
     this.isUrgent = false,
     this.dueDate,
+    this.startDate,
+    this.hasStartTime,
     this.labelId,
     this.repeatFrequency = RepeatFrequency.none,
   });
 
   @override
   List<Object?> get props =>
-      [taskId, title, description, isImportant, isUrgent, dueDate, labelId, repeatFrequency];
+      [taskId, title, description, isImportant, isUrgent, dueDate, startDate, hasStartTime, labelId, repeatFrequency];
 }
 
-/// طلب إضافة مرفقات لتاسك موجود مسبقاً (من شاشة تفاصيل التاسك).
-/// منفصل عن TaskCreateRequested لأنه هون التاسك أصلاً موجود وممكن يكون
-/// عندو مرفقات سابقة، فمنضيف الجداد إلها بدل ما نستبدلها.
 class TaskAttachmentAddRequested extends TaskEvent {
   final String taskId;
   final List<String> filePaths;
@@ -79,7 +84,6 @@ class TaskAttachmentAddRequested extends TaskEvent {
   List<Object?> get props => [taskId, filePaths];
 }
 
-/// طلب حذف مرفق واحد من تاسك موجود (من شاشة تفاصيل التاسك).
 class TaskAttachmentRemoveRequested extends TaskEvent {
   final String taskId;
   final String attachmentUrl;
@@ -96,9 +100,6 @@ class TaskStatusChangeRequested extends TaskEvent {
   List<Object?> get props => [taskId, status];
 }
 
-/// حذف مؤقت (نقل لسلة المحذوفات). لازم نمرر اسم المشروع والـ workspace
-/// هون (Snapshot) — الشاشة (TasksScreen) أصلاً عندها هالمعلومات بالذاكرة،
-/// فما في داعي الـ Bloc/Repository يروحوا يجيبوها من مكان تاني.
 class TaskDeleteRequested extends TaskEvent {
   final String taskId;
   final String projectName;
@@ -116,8 +117,6 @@ class TaskDeleteRequested extends TaskEvent {
   List<Object?> get props => [taskId, projectName, workspaceId, workspaceName];
 }
 
-/// طلب نقل التاسك من المشروع (أو الـ Inbox) الحالي إلو لمشروع تاني —
-/// مستخدمة أساساً من شاشة الـ Inbox لما المستخدم يحدد مشروع لتاسك.
 class TaskMoveRequested extends TaskEvent {
   final String taskId;
   final String newProjectId;

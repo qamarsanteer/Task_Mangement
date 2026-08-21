@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 
-/// Masar's brand mark: a flowing route drawn inside a rounded gradient tile.
-///
-/// The glyph is now an "M" shaped path — a direct visual link to the app's
-/// name "Masar" / "مسار". It starts at the bottom-left leg (the starting
-/// point) and ends at the bottom-right leg (the destination).
 class MasarLogo extends StatelessWidget {
   final double size;
   final double progress;

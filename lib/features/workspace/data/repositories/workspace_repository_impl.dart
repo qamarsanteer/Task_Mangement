@@ -64,8 +64,6 @@ class WorkspaceRepositoryImpl implements WorkspaceRepository, Syncable {
       }
     }
 
-    // أوفلاين: ننشئ عنصر محلي مؤقت (id يبلش بـ local_)، نضيفه للكاش فوراً،
-    // ونسجّل عملية "إنشاء" بطابور المزامنة.
     final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
     final localWorkspace = WorkspaceModel(id: tempId, name: name, createdAt: DateTime.now());
     final current = _cache.getList(_cacheKey) ?? [];
@@ -92,11 +90,10 @@ class WorkspaceRepositoryImpl implements WorkspaceRepository, Syncable {
       }
     }
 
-    // أوفلاين (أو عنصر محلي أصلاً ما تزامن بعد): نحذفه من الكاش فوراً
     await _removeFromCache(workspaceId);
 
     if (isLocalOnly) {
-      // ما تزامن أصلاً → منشيل عملية "الإنشاء" المعلّقة تبعته، خلص القصة
+
       await _removePendingCreate(workspaceId);
     } else {
       await _addPendingOp({'type': 'delete', 'id': workspaceId});
@@ -104,7 +101,7 @@ class WorkspaceRepositoryImpl implements WorkspaceRepository, Syncable {
     return const Right(null);
   }
 
-  // ─── Syncable ───
+
 
   @override
   Future<void> syncPendingChanges() async {
@@ -121,7 +118,7 @@ class WorkspaceRepositoryImpl implements WorkspaceRepository, Syncable {
           await _remoteDataSource.deleteWorkspace(op['id'] as String);
         }
       } catch (_) {
-        remaining.add(op); // منسيبها نجرب مرة تانية بالمزامنة الجاية
+        remaining.add(op); 
       }
     }
     await _cache.saveList(_pendingOpsKey, remaining);

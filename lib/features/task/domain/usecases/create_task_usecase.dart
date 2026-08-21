@@ -14,6 +14,8 @@ class CreateTaskUseCase {
     bool isImportant = false,
     bool isUrgent = false,
     DateTime? dueDate,
+    DateTime? startDate,
+    bool hasStartTime = false,
     String? labelId,
     RepeatFrequency repeatFrequency = RepeatFrequency.none,
   }) {
@@ -24,6 +26,8 @@ class CreateTaskUseCase {
       isImportant: isImportant,
       isUrgent: isUrgent,
       dueDate: dueDate,
+      startDate: startDate,
+      hasStartTime: hasStartTime,
       labelId: labelId,
       repeatFrequency: repeatFrequency,
     );

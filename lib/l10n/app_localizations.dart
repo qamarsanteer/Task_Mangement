@@ -620,6 +620,12 @@ abstract class AppLocalizations {
   /// **'Not started'**
   String get notStartedLabel;
 
+  /// No description provided for @pendingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pendingLabel;
+
   /// No description provided for @inProgressLabel.
   ///
   /// In en, this message translates to:
@@ -800,6 +806,12 @@ abstract class AppLocalizations {
   /// **'Not Started'**
   String get taskStatusNotStarted;
 
+  /// No description provided for @taskStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get taskStatusPending;
+
   /// No description provided for @taskStatusInProgress.
   ///
   /// In en, this message translates to:
@@ -847,6 +859,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Calendar'**
   String get viewCalendar;
+
+  /// No description provided for @timelineNoTimeSection.
+  ///
+  /// In en, this message translates to:
+  /// **'No specific time'**
+  String get timelineNoTimeSection;
+
+  /// No description provided for @timelineShowAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all ({count})'**
+  String timelineShowAll(Object count);
+
+  /// No description provided for @timelineShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get timelineShowLess;
 
   /// No description provided for @taskDetails.
   ///
@@ -1279,6 +1309,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Send'**
   String get send;
+
+  /// No description provided for @deletedProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted Projects'**
+  String get deletedProjects;
+
+  /// No description provided for @noDeletedProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'No deleted projects'**
+  String get noDeletedProjects;
+
+  /// No description provided for @viewTasks.
+  ///
+  /// In en, this message translates to:
+  /// **'View tasks'**
+  String get viewTasks;
+
+  /// No description provided for @close.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get close;
+
+  /// No description provided for @projectRestored.
+  ///
+  /// In en, this message translates to:
+  /// **'Project restored successfully'**
+  String get projectRestored;
+
+  /// No description provided for @deleteProjectForever.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete project forever'**
+  String get deleteProjectForever;
+
+  /// No description provided for @projectDeleteWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'This project contains {count} tasks. They will all be permanently deleted.'**
+  String projectDeleteWarning(Object count);
+
+  /// No description provided for @projectDeletedForever.
+  ///
+  /// In en, this message translates to:
+  /// **'Project deleted permanently'**
+  String get projectDeletedForever;
+
+  /// No description provided for @tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'tasks'**
+  String get tasks;
+
+  /// No description provided for @startDateLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Date'**
+  String get startDateLabel;
+
+  /// No description provided for @selectStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Select start date'**
+  String get selectStartDate;
+
+  /// No description provided for @startTimeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Time (optional)'**
+  String get startTimeLabel;
+
+  /// No description provided for @selectStartTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Select time'**
+  String get selectStartTime;
+
+  /// No description provided for @editStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Start Date & Time'**
+  String get editStartDate;
 
   /// No description provided for @inviteSentMessage.
   ///

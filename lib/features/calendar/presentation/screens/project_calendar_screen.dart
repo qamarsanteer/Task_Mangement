@@ -21,16 +21,6 @@ import '../../../task/presentation/bloc/task_event.dart';
 import '../../../task/presentation/bloc/task_state.dart';
 import '../../../task/presentation/screens/task_detail_screen.dart';
 
-/// نسخة "خاصة بمشروع واحد" من شاشة الكالندر (calendar_screen.dart).
-/// الفرق الجوهري عن الكالندر العام:
-/// 1) بتعرض بس تاسكات هاد المشروع بالذات (مش كل تاسكات كل الـ workspaces).
-/// 2) ديالوج "إضافة تاسك" ما فيه اختيار workspace/project — لأنه أصلاً
-///    معروفين مسبقاً (نفس الـ project يلي فتحنا الشاشة من جواه).
-///
-/// بما إنه هون تاسكات مشروع واحد بس، منستخدم TaskBloc الموجود أصلاً
-/// (نفس الـ Bloc يلي بتستخدمو TasksScreen) بدل ما نبني Bloc خاص جديد —
-/// هيك الشاشتين بيشتركوا بنفس مصدر الحقيقة (source of truth)، وأي
-/// تغيير من TasksScreen بينعكس هون تلقائياً والعكس صحيح.
 class ProjectCalendarScreen extends StatelessWidget {
   final ProjectEntity project;
   final String workspaceName;
@@ -72,10 +62,6 @@ class _ProjectCalendarViewState extends State<_ProjectCalendarView> {
     _selectedDate = DateTime(now.year, now.month, now.day);
     _displayedMonth = DateTime(now.year, now.month, 1);
 
-    // منستمع لأي تغيير صار على هاد المشروع من شاشة تانية كليًا (متل
-    // استرجاع تاسك من BinScreen)، حتى لو هاد الـ Widget كان محفوظ حي
-    // بالذاكرة بس مش ظاهر عالشاشة هلق — نفس المنطق المستخدم بـ
-    // TasksScreen بالضبط.
     _taskChangesSubscription = getIt<TaskChangesBus>().onProjectChanged.listen((changedProjectId) {
       if (changedProjectId == widget.project.id && mounted) {
         context.read<TaskBloc>().add(TasksLoadRequested(widget.project.id));
@@ -141,10 +127,6 @@ class _ProjectCalendarViewState extends State<_ProjectCalendarView> {
         ),
       ),
     );
-    // بعد الرجوع من شاشة التفاصيل، ممكن يكون في تعديل صار على التاسك.
-    // بما إنه bloc.value ممرر مباشرة (مش instance جديد)، التعديلات يلي
-    // صارت جوا TaskDetailScreen أصلاً انعكست على نفس الـ Bloc، فما في
-    // داعي نعيد التحميل يدوياً هون.
   }
 
   void _loadTasks() {
@@ -161,8 +143,6 @@ class _ProjectCalendarViewState extends State<_ProjectCalendarView> {
       appBar: AppBar(
         title: Text('${widget.project.name} · ${l10n.calendar}'),
         actions: [
-          // زر البحث هون شكلي بس، متل زر البحث بشاشة Inbox/Project
-          // (ما في بحث فعلي مطبّق بالتطبيق حالياً بأي واجهة).
           IconButton(icon: const Icon(Icons.search), onPressed: () => _showComingSoon(context, l10n)),
           if (!isToday)
             TextButton(
@@ -195,10 +175,6 @@ class _ProjectCalendarViewState extends State<_ProjectCalendarView> {
           return RefreshIndicator(
             onRefresh: () async => _loadTasks(),
             color: AppColors.primary,
-            // ─── منستخدم CustomScrollView واحد للصفحة كلها (الكالندر +
-            // الليستة) بدل Column/Expanded منفصلين. هيك لو الشاشة قصيرة أو
-            // الكالندر إله ارتفاع كبير (6 أسابيع مثلاً)، الليستة ما بتنضغط
-            // لارتفاع صفر — المستخدم بس بيقدر يسحب/يزحلق لتحت ليشوفها.
             child: CustomScrollView(
               slivers: [
                 SliverToBoxAdapter(child: _buildCalendarCard(context, locale, allTasks)),
@@ -579,12 +555,6 @@ class _ProjectCalendarViewState extends State<_ProjectCalendarView> {
     return Icon(icon, size: 16, color: color);
   }
 
-  /// ديالوج "إضافة تاسك" من شاشة كالندر المشروع — نفس حقول ديالوج
-  /// الإضافة يلي بشاشة المشروع (TasksScreen)، بس بدون اختيار workspace
-  /// ولا project (بعكس الكالندر العام)، لأنه أصلاً واضحين من الشاشة
-  /// نفسها (widget.project). تاريخ الاستحقاق بيتعبى افتراضياً باليوم
-  /// المحدد حالياً بالكالندر، حتى التاسك يظهر فوراً بلستة "تاسكات هاد
-  /// اليوم" بعد ما ينخلق.
   void _showAddTaskDialog(BuildContext context, AppLocalizations l10n) {
     final bloc = context.read<TaskBloc>();
     final titleController = TextEditingController();
@@ -776,9 +746,6 @@ class _ProjectCalendarViewState extends State<_ProjectCalendarView> {
                     attachmentPaths: attachmentPaths,
                   ));
 
-                  // منروّح تلقائياً لتاريخ استحقاق التاسك الجديد (لو محدد)
-                  // حتى يبين فوراً بلستة "تاسكات هاد اليوم" بدون ما
-                  // المستخدم يدوّر عليه.
                   if (selectedDate != null) {
                     _selectDate(DateTime(selectedDate!.year, selectedDate!.month, selectedDate!.day));
                   }

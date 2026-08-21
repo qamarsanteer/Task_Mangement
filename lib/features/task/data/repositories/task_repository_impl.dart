@@ -11,23 +11,31 @@ import '../../domain/entities/deleted_task_entry.dart';
 import '../../domain/repositories/task_repository.dart';
 import '../datasources/task_remote_data_source.dart';
 import '../models/task_model.dart';
+import '../../../project/data/models/project_model.dart';     
+import '../../../bin/domain/entities/deleted_project_entry.dart'; 
+import '../../../project/domain/entities/project_entity.dart';
+import '../../../project/data/datasources/project_remote_data_source.dart';
 
 class TaskRepositoryImpl implements TaskRepository, Syncable {
   static const _pendingOpsKey = 'pending_task_ops';
   static const _indexKey = 'task_project_index';
   static const _binCacheKey = 'cache_deleted_tasks';
+  static const _projectBinCacheKey = 'cache_deleted_projects';
 
   final TaskRemoteDataSource _remoteDataSource;
+  final ProjectRemoteDataSource _projectRemoteDataSource;
   final LocalCacheService _cache;
   final ConnectivityService _connectivityService;
   final TaskChangesBus _taskChangesBus;
 
   TaskRepositoryImpl({
     required TaskRemoteDataSource remoteDataSource,
+    required ProjectRemoteDataSource projectRemoteDataSource,
     required LocalCacheService cache,
     required ConnectivityService connectivityService,
     required TaskChangesBus taskChangesBus,
   })  : _remoteDataSource = remoteDataSource,
+        _projectRemoteDataSource = projectRemoteDataSource,
         _cache = cache,
         _connectivityService = connectivityService,
         _taskChangesBus = taskChangesBus;
@@ -41,11 +49,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     if (isConnected) {
       try {
         final tasks = await _remoteDataSource.getTasks(projectId);
-        // الحذف المؤقت (move-to-bin) عملية محلية 100% وما بتوصل عالسيرفر
-        // إطلاقاً (شوفي تعليق deleteTask تحت)، فالسيرفر لسا شايف هيك
-        // تاسكات كأنها موجودة عادي بمشروعها. لازم نستثنيهم هون يدوياً
-        // وإلا أي تاسك بالسلة (محذوف مؤقتاً بس لسا ما استرجعه المستخدم)
-        // كان رح "يرجع لوحده" لقائمة المشروع أول ما نعمل fetch أونلاين.
         final binnedIds = await _binnedTaskIds();
         final filtered = tasks.where((t) => !binnedIds.contains(t.id)).toList();
         await _cache.saveList(
@@ -78,6 +81,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     bool isImportant = false,
     bool isUrgent = false,
     DateTime? dueDate,
+    DateTime? startDate,
+    bool hasStartTime = false,
     String? labelId,
     RepeatFrequency repeatFrequency = RepeatFrequency.none,
   }) async {
@@ -92,6 +97,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
           isImportant: isImportant,
           isUrgent: isUrgent,
           dueDate: dueDate,
+          startDate: startDate,
+          hasStartTime: hasStartTime,
           labelId: labelId,
           repeatFrequency: repeatFrequency,
         );
@@ -108,7 +115,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       }
     }
 
-    // أوفلاين: تاسك محلي مؤقت + تسجيل عملية "إنشاء" بطابور المزامنة
     final tempId = 'local_${DateTime.now().millisecondsSinceEpoch}';
     final localTask = TaskModel(
       id: tempId,
@@ -118,6 +124,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       isImportant: isImportant,
       isUrgent: isUrgent,
       dueDate: dueDate,
+      startDate: startDate,
+      hasStartTime: hasStartTime,
       projectId: projectId,
       createdAt: DateTime.now(),
       labelId: labelId,
@@ -136,6 +144,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       'isImportant': isImportant,
       'isUrgent': isUrgent,
       'dueDate': dueDate?.toIso8601String(),
+      'startDate': startDate?.toIso8601String(),
+      'hasStartTime': hasStartTime,
       'labelId': labelId,
       'repeatFrequency': TaskModel.repeatToString(repeatFrequency),
     });
@@ -170,16 +180,10 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     }
 
     if (isLocalOnly) {
-      // لسا ما تزامن → منحدّث الحالة داخل عملية "الإنشاء" المعلّقة نفسها
       await _updatePendingCreateStatus(taskId, status);
     } else {
       await _addPendingOp({'type': 'updateStatus', 'id': taskId, 'status': TaskModel.statusToString(status)});
     }
-    // منبلّغ أي Bloc/شاشة تانية حية بالذاكرة (متل تاب الـ Inbox المحفوظ
-    // بالـ IndexedStack) إنه لازم يعيد تحميل قائمته — تماماً متل منطق
-    // create/delete/restore/move. بدون هيدا، تغيير الحالة من شاشة تانية
-    // (متل الكالندر، يلي إلها TaskBloc خاص فيها غير Bloc الـ Inbox) ما
-    // رح ينعكس بالـ Inbox لحد ما تنعاد بناء الشاشة من الصفر.
     _taskChangesBus.notifyProjectChanged(updated.projectId);
     return Right(updated);
   }
@@ -192,6 +196,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     bool isImportant = false,
     bool isUrgent = false,
     DateTime? dueDate,
+    DateTime? startDate,
+    bool? hasStartTime,
     String? labelId,
     RepeatFrequency repeatFrequency = RepeatFrequency.none,
   }) async {
@@ -207,6 +213,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
           isImportant: isImportant,
           isUrgent: isUrgent,
           dueDate: dueDate,
+          startDate: startDate,
+          hasStartTime: hasStartTime,
           labelId: labelId,
           repeatFrequency: repeatFrequency,
         );
@@ -217,6 +225,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
           isImportant: isImportant,
           isUrgent: isUrgent,
           dueDate: dueDate,
+          startDate: startDate,
+          hasStartTime: hasStartTime,
           labelId: labelId,
           repeatFrequency: repeatFrequency,
         );
@@ -236,6 +246,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       isImportant: isImportant,
       isUrgent: isUrgent,
       dueDate: dueDate,
+      startDate: startDate,
+      hasStartTime: hasStartTime,
       labelId: labelId,
       repeatFrequency: repeatFrequency,
     );
@@ -244,8 +256,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     }
 
     if (isLocalOnly) {
-      // لسا ما تزامن → منحدّث الحقول داخل عملية "الإنشاء" المعلّقة نفسها
-      // (بدل ما نضيف عملية منفصلة ممكن تعمل تعارض بالترتيب وقت المزامنة).
       await _updatePendingCreateFields(
         taskId,
         title: title,
@@ -253,11 +263,12 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
         isImportant: isImportant,
         isUrgent: isUrgent,
         dueDate: dueDate,
+        startDate: startDate,
+        hasStartTime: hasStartTime ?? false,
         labelId: labelId,
         repeatFrequency: repeatFrequency,
       );
     } else {
-      // إذا في تعديل معلّق سابق لنفس التاسك، منستبدله بدل ما نكدّس عمليتين
       await _removePendingUpdate(taskId);
       await _addPendingOp({
         'type': 'update',
@@ -267,15 +278,12 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
         'isImportant': isImportant,
         'isUrgent': isUrgent,
         'dueDate': dueDate?.toIso8601String(),
+        'startDate': startDate?.toIso8601String(),
+        'hasStartTime': hasStartTime,
         'labelId': labelId,
         'repeatFrequency': TaskModel.repeatToString(repeatFrequency),
       });
     }
-    // منبلّغ أي Bloc/شاشة تانية حية بالذاكرة (متل تاب الـ Inbox المحفوظ
-    // بالـ IndexedStack) إنه لازم يعيد تحميل قائمته — تماماً متل منطق
-    // create/delete/restore/move. بدون هيدا، تعديل تاسك من شاشة تانية
-    // (متل الكالندر، يلي إلها TaskBloc خاص فيها غير Bloc الـ Inbox) ما
-    // رح ينعكس بالـ Inbox لحد ما تنعاد بناء الشاشة من الصفر.
     _taskChangesBus.notifyProjectChanged(updated.projectId);
     return Right(updated);
   }
@@ -300,10 +308,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       }
     }
 
-    // تاسك محلي بعده ما تزامن (local_) أو الجهاز أوفلاين: منخزّن أسماء
-    // الملفات بالكاش مباشرة بدل ما نحاول نرفعها عالـ remoteDataSource،
-    // لأنه هداك ما رح يلاقي أصلاً تاسك بهيدا المعرّف المؤقت (وهاد بالضبط
-    // كان سبب اختفاء/نقصان المرفقات وقت إنشاء تاسك جديد بدون اتصال حقيقي).
     final updated = await _updateCachedAttachments(taskId, filePaths);
     if (updated == null) {
       return const Left(NetworkFailure('التاسك غير موجود بالكاش.'));
@@ -336,9 +340,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       return const Left(NetworkFailure('التاسك غير موجود بالكاش.'));
     }
 
-    // إذا كان التاسك لسا محلي (local_) وما انرفع عالسيرفر أصلاً، المرفق
-    // كان مخزّن بس بالكاش المحلي أساساً، فحذفه من الكاش كافي وما في
-    // داعي نسجّل عملية مزامنة منفصلة إلو.
     if (!isLocalOnly) {
       await _addPendingOp({'type': 'removeAttachment', 'id': taskId, 'attachmentUrl': attachmentUrl});
     }
@@ -369,8 +370,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     final index = current.indexWhere((t) => t['id'] == taskId);
     if (index == -1) return null;
 
-    // منضيف الروابط الجداد لأي روابط موجودة أصلاً بالكاش (مش منستبدلها)،
-    // نفس منطق الـ Bloc تماماً، حتى ما نفقد مرفقات سابقة كانت محفوظة.
     final existingUrls = (current[index]['attachment_urls'] as List?)?.map((e) => e.toString()).toList() ?? [];
     final mergedUrls = {...existingUrls, ...attachmentUrls}.toList();
 
@@ -379,7 +378,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     return TaskModel.fromJson(current[index]);
   }
 
-  // ─── حذف مؤقت (نقل للسلة) / استرجاع / حذف نهائي ───
 
   @override
   Future<Either<Failure, void>> deleteTask(
@@ -399,15 +397,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       return const Left(NetworkFailure('التاسك غير موجود بالكاش.'));
     }
 
-    // منلقط بيانات التاسك الكاملة قبل ما نمسحه من الكاش النشط، حتى
-    // نخزّنها كـ Snapshot جوا سلة المحذوفات (اسم المشروع/الـ workspace
-    // بيتخزنوا هلق كمان، مش بيتجابوا لاحقاً بالـ id، لأنه ممكن ينحذف
-    // المشروع أو الـ workspace نفسه قبل ما يسترجع المستخدم التاسك).
     final task = TaskModel.fromJson(current[index]);
 
-    // منشيل التاسك من كاش المشروع النشط + من فهرس taskId → projectId.
-    // ⚠️ بقصد ما منلمس pending ops ولا منندي أي remote delete هون —
-    // الحذف "المؤقت" (نقل للسلة) عملية محلية 100% لحتى الآن.
     await _removeFromCache(projectId, taskId);
 
     await _addToBin(DeletedTaskEntry(
@@ -418,27 +409,24 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       deletedAt: DateTime.now(),
     ));
 
-    // منبلّغ أي شاشة/Bloc تاني حي بالذاكرة (متل تاب الـ Inbox المحفوظ
-    // بالـ IndexedStack) إنه لازم يعيد تحميل قائمته فوراً — وإلا هيك
-    // شاشة كانت رح تضل عارضة نسخة قديمة عن التاسك (قبل الحذف)، ولو
-    // المستخدم حاول يحذفه منها كمان كان رح ياخد خطأ "غير موجود بالكاش"
-    // لأنه أصلاً انمسح من الفهرس بالسطر فوق. نفس منطق restoreTask تماماً.
     _taskChangesBus.notifyProjectChanged(projectId);
 
     return const Right(null);
   }
 
-  @override
+    @override
   Future<Either<Failure, List<DeletedTaskEntry>>> getDeletedTasks() async {
     final entries = await _readBinList();
 
-    // تنظيف كسول (lazy purge): أي تاسك عدّى عليه 30 يوم بالسلة بينحذف
-    // نهائياً تلقائياً كل مرة نقرأ فيها قائمة السلة (مثلاً وقت ما تنفتح
-    // شاشة الـ Bin). ما في background job حقيقي بالتطبيق فهاي أبسط طريقة
-    // مضمونة بدون سيرفر.
     final expired = entries.where((e) => e.isExpired).toList();
     for (final entry in expired) {
-      await _finalizeDelete(entry); // best-effort، ما بتوقف لو فشلت
+      await _finalizeDelete(entry);
+    }
+
+    final projectEntries = await _readProjectBinList();
+    final expiredProjects = projectEntries.where((e) => e.isExpired).toList();
+    for (final entry in expiredProjects) {
+      await _finalizeProjectDelete(entry);
     }
 
     final remaining = expired.isEmpty ? entries : await _readBinList();
@@ -460,8 +448,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       return const Left(NetworkFailure('التاسك غير موجود بالسلة.'));
     }
 
-    // منرجّعه لنفس كاش المشروع الأصلي (نفس projectId المخزّن بالتاسك
-    // نفسه) بدون أي نداء remote، لأنه أصلاً ما كان انحذف من السيرفر.
     final projectId = entry.task.projectId;
     final current = _cache.getList(_cacheKey(projectId)) ?? [];
     current.add((entry.task as TaskModel).toJson());
@@ -470,10 +456,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
 
     await _removeFromBin(taskId);
 
-    // منبلّغ أي شاشة/Bloc تاني حي بالذاكرة (متل تاب الـ Inbox المحفوظ
-    // بالـ IndexedStack) إنه لازم يعيد تحميل قائمته، لأنه احتمال كبير
-    // نحن جايين من شاشة تانية كليًا (BinScreen) وما في أي طريقة تانية
-    // توصّل الخبر للـ Bloc القديم.
     _taskChangesBus.notifyProjectChanged(projectId);
 
     return Right(entry.task);
@@ -495,16 +477,11 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     return _finalizeDelete(entry);
   }
 
-  /// الحذف الفعلي (النهائي) — سواء بطلب يدوي من المستخدم من شاشة السلة،
-  /// أو تلقائياً بعد ما تعدي مدة الـ 30 يوم.
   Future<Either<Failure, void>> _finalizeDelete(DeletedTaskEntry entry) async {
     final taskId = entry.task.id;
     final isLocalOnly = taskId.startsWith('local_');
 
     if (isLocalOnly) {
-      // التاسك أصلاً ما انخلق عالسيرفر (لسا محلي) — ما في شي نحذفه
-      // هناك، بس منلغي عملية "الإنشاء" المعلّقة إلو حتى ما يظهر
-      // فجأة بعد ما ترجع المزامنة.
       await _removePendingCreate(taskId);
       await _removeFromBin(taskId);
       return const Right(null);
@@ -525,9 +502,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       }
     }
 
-    // أوفلاين: منشيله محلياً من السلة فوراً، ومنسجّل عملية حذف معلّقة
-    // حتى يتحذف فعلياً من السيرفر لما يرجع الاتصال (نفس آلية 'delete'
-    // الموجودة أصلاً بـ syncPendingChanges).
     await _removePendingUpdateStatus(taskId);
     await _removePendingUpdate(taskId);
     await _removeFromBin(taskId);
@@ -558,11 +532,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     final isConnected = await _connectivityService.isConnected;
     final isLocalOnly = taskId.startsWith('local_');
 
-    // ⚠️ كان هون البلاء: كنا منعدّل الكاش المحلي بس وما كنا منخبر
-    // السيرفر (أو الموك) إطلاقاً بالنقل. فأول getTasks() جاي بعدها
-    // وهو أونلاين كان عم يجيب القائمة "الرسمية" من السيرفر (يلي لسا
-    // شايفة التاسك بمشروعه القديم) وعم يمسح فوقها التعديل المحلي،
-    // فالتاسك كان عم يرجع يظهر بالـ Inbox وكأنه ما انتقل أبداً.
     if (isConnected && !isLocalOnly) {
       try {
         await _remoteDataSource.updateTaskProject(taskId: taskId, newProjectId: newProjectId);
@@ -592,20 +561,15 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
         await _cache.saveList(_pendingOpsKey, ops);
       }
     } else if (!isConnected) {
-      // أوفلاين وتاسك حقيقي (مش local_): منسجّل عملية نقل معلّقة حتى
-      // تتبعت للسيرفر لما يرجع الاتصال (نفس آلية باقي العمليات).
       await _addPendingOp({'type': 'move', 'id': taskId, 'newProjectId': newProjectId});
     }
 
-    // منبلّغ أي شاشة/Bloc تاني حي بالذاكرة (بالمشروع القديم أو الجديد)
-    // إنه لازم يعيد تحميل قائمته.
     _taskChangesBus.notifyProjectChanged(oldProjectId);
     _taskChangesBus.notifyProjectChanged(newProjectId);
 
     return Right(TaskModel.fromJson(movedJson));
   }
 
-  // ─── Syncable ───
 
   @override
   Future<void> syncPendingChanges() async {
@@ -624,12 +588,12 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
               isImportant: op['isImportant'] as bool? ?? false,
               isUrgent: op['isUrgent'] as bool? ?? false,
               dueDate: op['dueDate'] != null ? DateTime.tryParse(op['dueDate'] as String) : null,
+              startDate: op['startDate'] != null ? DateTime.tryParse(op['startDate'] as String) : null,
+              hasStartTime: op['hasStartTime'] as bool? ?? false,
               labelId: op['labelId'] as String?,
               repeatFrequency: _repeatFromStringPublic(op['repeatFrequency'] as String?),
             );
             var syncedTask = created as TaskModel;
-            // إذا كانت الحالة تغيّرت أوفلاين لهاد التاسك (مثلاً صار Completed)
-            // قبل ما ينخلق أصلاً بالسيرفر، منطبّق الحالة النهائية هلق.
             final pendingStatus = op['pendingStatus'] as String?;
             if (pendingStatus != null) {
               syncedTask = await _remoteDataSource.updateTaskStatus(
@@ -655,6 +619,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
               isImportant: op['isImportant'] as bool? ?? false,
               isUrgent: op['isUrgent'] as bool? ?? false,
               dueDate: op['dueDate'] != null ? DateTime.tryParse(op['dueDate'] as String) : null,
+              startDate: op['startDate'] != null ? DateTime.tryParse(op['startDate'] as String) : null,
+              hasStartTime: op['hasStartTime'] as bool?,
               labelId: op['labelId'] as String?,
               repeatFrequency: _repeatFromStringPublic(op['repeatFrequency'] as String?),
             );
@@ -677,6 +643,10 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
               newProjectId: op['newProjectId'] as String,
             );
             break;
+
+          case 'deleteProject':
+            await _projectRemoteDataSource.deleteProject(op['id'] as String);
+            break;  
         }
       } catch (_) {
         remaining.add(op);
@@ -685,7 +655,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     await _cache.saveList(_pendingOpsKey, remaining);
   }
 
-  // ─── Helpers ───
 
   Either<Failure, List<TaskEntity>>? _readCachedList(String projectId) {
     final json = _cache.getList(_cacheKey(projectId));
@@ -713,6 +682,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     required bool isImportant,
     required bool isUrgent,
     DateTime? dueDate,
+    DateTime? startDate,
+    bool? hasStartTime,
     String? labelId,
     required RepeatFrequency repeatFrequency,
   }) async {
@@ -730,6 +701,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
       'is_important': isImportant,
       'is_urgent': isUrgent,
       'due_date': dueDate?.toIso8601String(),
+      'start_date': startDate?.toIso8601String(),
+      if (hasStartTime != null) 'has_start_time': hasStartTime,
       'label_id': labelId,
       'repeat_frequency': TaskModel.repeatToString(repeatFrequency),
     };
@@ -803,6 +776,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     required bool isImportant,
     required bool isUrgent,
     DateTime? dueDate,
+    DateTime? startDate,
+    bool hasStartTime = false,
     String? labelId,
     required RepeatFrequency repeatFrequency,
   }) async {
@@ -816,6 +791,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
         'isImportant': isImportant,
         'isUrgent': isUrgent,
         'dueDate': dueDate?.toIso8601String(),
+        'startDate': startDate?.toIso8601String(),
+        'hasStartTime': hasStartTime,
         'labelId': labelId,
         'repeatFrequency': TaskModel.repeatToString(repeatFrequency),
       };
@@ -834,6 +811,8 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
 
   TaskStatus _statusFromStringPublic(String value) {
     switch (value) {
+      case 'pending':
+        return TaskStatus.pending;
       case 'in_progress':
         return TaskStatus.inProgress;
       case 'completed':
@@ -855,8 +834,6 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
         return RepeatFrequency.none;
     }
   }
-
-  // ─── سلة المحذوفات (Bin) — تخزين/قراءة ───
 
   Future<List<DeletedTaskEntry>> _readBinList() async {
     final raw = _cache.getList(_binCacheKey) ?? [];
@@ -889,6 +866,191 @@ class TaskRepositoryImpl implements TaskRepository, Syncable {
     return DeletedTaskEntry(
       task: TaskModel.fromJson(json['task'] as Map<String, dynamic>),
       projectName: json['project_name']?.toString() ?? '',
+      workspaceId: json['workspace_id']?.toString() ?? '',
+      workspaceName: json['workspace_name']?.toString() ?? '',
+      deletedAt: json['deleted_at'] != null
+          ? DateTime.tryParse(json['deleted_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteProjectToBin({
+    required String projectId,
+    required String workspaceId,
+    required String workspaceName,
+    ProjectEntity? project, 
+  }) async {
+    final tasksJson = _cache.getList(_cacheKey(projectId)) ?? [];
+    final tasks = tasksJson.map(TaskModel.fromJson).toList();
+
+    final ProjectEntity projectToBin;
+    if (project != null) {
+      projectToBin = project;
+    } else {
+      final projectsJson = _cache.getList('cache_projects_$workspaceId') ?? [];
+      final projectMap = projectsJson.cast<Map<String, dynamic>>().firstWhere(
+            (p) => p['id'] == projectId,
+            orElse: () => {},
+          );
+      if (projectMap.isEmpty) {
+        return const Left(NetworkFailure('المشروع غير موجود بالكاش.'));
+      }
+      projectToBin = ProjectModel.fromJson(projectMap);
+    }
+
+    final currentProjects = _cache.getList('cache_projects_$workspaceId') ?? [];
+    currentProjects.removeWhere((p) => p['id'] == projectId);
+    await _cache.saveList('cache_projects_$workspaceId', currentProjects);
+
+    await _cache.saveList(_cacheKey(projectId), []);
+    final index = _cache.getObject(_indexKey) ?? {};
+    for (final t in tasks) {
+      index.remove(t.id);
+    }
+    await _cache.saveObject(_indexKey, index);
+
+    await _addProjectToBin(DeletedProjectEntry(
+      project: projectToBin,
+      tasks: tasks,
+      workspaceId: workspaceId,
+      workspaceName: workspaceName,
+      deletedAt: DateTime.now(),
+    ));
+
+    _taskChangesBus.notifyProjectChanged(projectId);
+
+    return const Right(null);
+  }
+
+  @override
+  Future<Either<Failure, List<DeletedProjectEntry>>> getDeletedProjects() async {
+    final entries = await _readProjectBinList();
+    final expired = entries.where((e) => e.isExpired).toList();
+    for (final entry in expired) { await _finalizeProjectDelete(entry); }
+    final remaining = expired.isEmpty ? entries : await _readProjectBinList();
+    remaining.sort((a, b) => b.deletedAt.compareTo(a.deletedAt));
+    return Right(remaining);
+  }
+
+  @override
+  Future<Either<Failure, ProjectEntity>> restoreProject(String projectId) async {
+    final entries = await _readProjectBinList();
+    DeletedProjectEntry? entry;
+    for (final e in entries) {
+      if (e.project.id == projectId) { entry = e; break; }
+    }
+    if (entry == null) {
+      return const Left(NetworkFailure('المشروع غير موجود بالسلة.'));
+    }
+
+    final workspaceId = entry.workspaceId;
+    final currentProjects = _cache.getList('cache_projects_$workspaceId') ?? [];
+    currentProjects.add((entry.project as ProjectModel).toJson());
+    await _cache.saveList('cache_projects_$workspaceId', currentProjects);
+
+    final taskJsonList = entry.tasks.map((t) => (t as TaskModel).toJson()).toList();
+    await _cache.saveList(_cacheKey(projectId), taskJsonList);
+
+    final index = _cache.getObject(_indexKey) ?? {};
+    for (final t in entry.tasks) { index[t.id] = projectId; }
+    await _cache.saveObject(_indexKey, index);
+
+    await _removeFromProjectBin(projectId);
+    _taskChangesBus.notifyProjectChanged(projectId);
+    return Right(entry.project);
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteProjectForever(String projectId) async {
+    final entries = await _readProjectBinList();
+    DeletedProjectEntry? entry;
+    for (final e in entries) {
+      if (e.project.id == projectId) { entry = e; break; }
+    }
+    if (entry == null) {
+      return const Left(NetworkFailure('المشروع غير موجود بالسلة.'));
+    }
+    return _finalizeProjectDelete(entry);
+  }
+
+  Future<Either<Failure, void>> _finalizeProjectDelete(DeletedProjectEntry entry) async {
+  final projectId = entry.project.id;
+  final isLocalOnly = projectId.startsWith('local_');
+  final isConnected = await _connectivityService.isConnected;
+
+  if (isConnected) {
+    try {
+      for (final task in entry.tasks) {
+        if (!task.id.startsWith('local_')) {
+          await _remoteDataSource.deleteTask(task.id);
+        }
+      }
+      if (!isLocalOnly) {
+        await _projectRemoteDataSource.deleteProject(projectId);
+      }
+    } on DioException catch (e) {
+      return Left(DioErrorMapper.map(e));
+    } catch (e) {
+      return Left(UnknownFailure(e.toString()));
+    }
+  }
+
+  for (final task in entry.tasks) {
+    await _removePendingUpdateStatus(task.id);
+    await _removePendingUpdate(task.id);
+    if (task.id.startsWith('local_')) {
+      await _removePendingCreate(task.id);
+    }
+  }
+
+  if (isLocalOnly) {
+    await _removePendingCreateProject(projectId);
+  } else if (!isConnected) {
+    await _addPendingOp({'type': 'deleteProject', 'id': projectId});
+  }
+
+  await _removeFromProjectBin(projectId);
+  return const Right(null);
+}
+
+Future<void> _removePendingCreateProject(String tempId) async {
+}
+
+
+  Future<List<DeletedProjectEntry>> _readProjectBinList() async {
+    final raw = _cache.getList(_projectBinCacheKey) ?? [];
+    return raw.map(_projectEntryFromJson).toList();
+  }
+
+  Future<void> _addProjectToBin(DeletedProjectEntry entry) async {
+    final raw = _cache.getList(_projectBinCacheKey) ?? [];
+    raw.add(_projectEntryToJson(entry));
+    await _cache.saveList(_projectBinCacheKey, raw);
+  }
+
+  Future<void> _removeFromProjectBin(String projectId) async {
+    final raw = _cache.getList(_projectBinCacheKey) ?? [];
+    raw.removeWhere((e) => e['project']?['id'] == projectId);
+    await _cache.saveList(_projectBinCacheKey, raw);
+  }
+
+  Map<String, dynamic> _projectEntryToJson(DeletedProjectEntry entry) {
+    return {
+      'project': (entry.project as ProjectModel).toJson(),
+      'tasks': entry.tasks.map((t) => (t as TaskModel).toJson()).toList(),
+      'workspace_id': entry.workspaceId,
+      'workspace_name': entry.workspaceName,
+      'deleted_at': entry.deletedAt.toIso8601String(),
+    };
+  }
+
+  DeletedProjectEntry _projectEntryFromJson(Map<String, dynamic> json) {
+    return DeletedProjectEntry(
+      project: ProjectModel.fromJson(json['project'] as Map<String, dynamic>),
+      tasks: (json['tasks'] as List? ?? [])
+          .map((t) => TaskModel.fromJson(t as Map<String, dynamic>))
+          .toList(),
       workspaceId: json['workspace_id']?.toString() ?? '',
       workspaceName: json['workspace_name']?.toString() ?? '',
       deletedAt: json['deleted_at'] != null

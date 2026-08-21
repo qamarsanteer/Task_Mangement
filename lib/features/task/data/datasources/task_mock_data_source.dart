@@ -19,6 +19,8 @@ class TaskMockDataSource implements TaskRemoteDataSource {
     bool isImportant = false,
     bool isUrgent = false,
     DateTime? dueDate,
+    DateTime? startDate, 
+    bool hasStartTime = false, 
     String? labelId,
     RepeatFrequency repeatFrequency = RepeatFrequency.none,
   }) async {
@@ -31,6 +33,8 @@ class TaskMockDataSource implements TaskRemoteDataSource {
       isImportant: isImportant,
       isUrgent: isUrgent,
       dueDate: dueDate,
+      startDate: startDate,
+      hasStartTime: hasStartTime, 
       projectId: projectId,
       createdAt: DateTime.now(),
       labelId: labelId,
@@ -54,6 +58,8 @@ class TaskMockDataSource implements TaskRemoteDataSource {
           isImportant: list[index].isImportant,
           isUrgent: list[index].isUrgent,
           dueDate: list[index].dueDate,
+          startDate: list[index].startDate, 
+          hasStartTime: list[index].hasStartTime, 
           projectId: list[index].projectId,
           createdAt: list[index].createdAt,
           labelId: list[index].labelId,
@@ -75,6 +81,8 @@ class TaskMockDataSource implements TaskRemoteDataSource {
     bool isImportant = false,
     bool isUrgent = false,
     DateTime? dueDate,
+    DateTime? startDate,
+    bool? hasStartTime,
     String? labelId,
     RepeatFrequency repeatFrequency = RepeatFrequency.none,
   }) async {
@@ -90,6 +98,8 @@ class TaskMockDataSource implements TaskRemoteDataSource {
           isImportant: isImportant,
           isUrgent: isUrgent,
           dueDate: dueDate,
+          startDate: startDate ?? list[index].startDate,
+          hasStartTime: hasStartTime ?? list[index].hasStartTime, 
           projectId: list[index].projectId,
           createdAt: list[index].createdAt,
           labelId: labelId,
@@ -106,7 +116,6 @@ class TaskMockDataSource implements TaskRemoteDataSource {
   @override
   Future<List<String>> uploadAttachments({required String taskId, required List<String> filePaths}) async {
     await Future.delayed(const Duration(milliseconds: 700));
-    // بالـ mock منرجع نفس المسارات المحلية كأنها "روابط" المرفقات
     for (final list in _tasksByProject.values) {
       final index = list.indexWhere((t) => t.id == taskId);
       if (index != -1) {
@@ -118,6 +127,7 @@ class TaskMockDataSource implements TaskRemoteDataSource {
           isImportant: list[index].isImportant,
           isUrgent: list[index].isUrgent,
           dueDate: list[index].dueDate,
+          startDate: list[index].startDate,
           projectId: list[index].projectId,
           createdAt: list[index].createdAt,
           labelId: list[index].labelId,
@@ -144,6 +154,7 @@ class TaskMockDataSource implements TaskRemoteDataSource {
           isImportant: list[index].isImportant,
           isUrgent: list[index].isUrgent,
           dueDate: list[index].dueDate,
+          startDate: list[index].startDate, 
           projectId: list[index].projectId,
           createdAt: list[index].createdAt,
           labelId: list[index].labelId,
@@ -180,15 +191,15 @@ class TaskMockDataSource implements TaskRemoteDataSource {
           isImportant: old.isImportant,
           isUrgent: old.isUrgent,
           dueDate: old.dueDate,
+          startDate: old.startDate, 
+          hasStartTime: old.hasStartTime, 
           projectId: newProjectId,
           createdAt: old.createdAt,
           labelId: old.labelId,
           attachmentUrls: old.attachmentUrls,
           repeatFrequency: old.repeatFrequency,
         );
-        // منشيله من قائمة مشروعه القديم (بما فيها الـ Inbox)...
         entry.value.removeAt(index);
-        // ...ومنضيفه لقائمة المشروع الجديد.
         _tasksByProject.putIfAbsent(newProjectId, () => []).add(moved);
         return moved;
       }

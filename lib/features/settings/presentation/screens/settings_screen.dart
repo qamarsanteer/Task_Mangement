@@ -88,7 +88,7 @@ class SettingsScreen extends StatelessWidget {
 
               Text(
                 l10n.aboutSectionTitle,
-                style: TextStyle(
+                style: TextStyle(   
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.primary,

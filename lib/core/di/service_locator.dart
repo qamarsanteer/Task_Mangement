@@ -10,9 +10,6 @@ import '../storage/token_storage.dart';
 import '../storage/app_preferences.dart';
 import '../bloc/theme/theme_bloc.dart';
 import '../bloc/locale/locale_bloc.dart';
-import '../network/dio_client.dart';
-import '../network/connectivity_service.dart';
-import '../cache/local_cache_service.dart';
 import '../events/task_changes_bus.dart';
 
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
@@ -60,7 +57,6 @@ import '../../features/task/domain/usecases/update_task_status_usecase.dart';
 import '../../features/task/presentation/bloc/task_bloc.dart';
 import '../../features/task/domain/usecases/upload_task_attachments_usecase.dart';
 import '../../features/task/domain/usecases/remove_task_attachment_usecase.dart';
-import '../../features/task/domain/usecases/update_task_status_usecase.dart';
 import '../../features/task/domain/usecases/update_task_usecase.dart';
 import '../../features/task/domain/usecases/move_task_to_project_usecase.dart';
 
@@ -69,220 +65,148 @@ import '../../features/bin/domain/repositories/bin_repository.dart';
 import '../../features/bin/domain/usecases/delete_task_forever_usecase.dart';
 import '../../features/bin/domain/usecases/get_deleted_tasks_usecase.dart';
 import '../../features/bin/domain/usecases/restore_task_usecase.dart';
+import '../../features/bin/domain/usecases/get_deleted_projects_usecase.dart';
+import '../../features/bin/domain/usecases/restore_project_usecase.dart';
+import '../../features/bin/domain/usecases/delete_project_forever_usecase.dart';
 import '../../features/bin/presentation/bloc/bin_bloc.dart';
 
 import '../../features/calendar/presentation/bloc/calendar_bloc.dart';
 
 final getIt = GetIt.instance;
-
-/// غيّر هاد المتغير لـ false لما يجهز السيرفر الحقيقي
 const bool _useMockData = true;
 
 Future<void> setupServiceLocator() async {
-  // ---------- External ----------
   final sharedPreferences = await SharedPreferences.getInstance();
   getIt.registerLazySingleton(() => sharedPreferences);
 
-  // ---------- Core ----------
   getIt.registerLazySingleton(() => DioClient());
   getIt.registerLazySingleton(() => TokenStorage());
   getIt.registerLazySingleton(() => AppPreferences(getIt()));
   getIt.registerLazySingleton(() => ConnectivityService());
   getIt.registerLazySingleton(() => LocalCacheService(getIt()));
-  getIt.registerLazySingleton(() => TaskChangesBus()); 
+  getIt.registerLazySingleton(() => TaskChangesBus());
 
-  // ---------- Core Blocs (theme / locale) ----------
   getIt.registerFactory(() => ThemeBloc(appPreferences: getIt()));
   getIt.registerFactory(() => LocaleBloc(appPreferences: getIt()));
 
-  // ---------- Auth: Data sources ----------
-  getIt.registerLazySingleton<AuthRemoteDataSource>(
-    () => _useMockData
-        ? AuthMockDataSource(prefs: getIt())
-        : AuthRemoteDataSourceImpl(dioClient: getIt()),
+  getIt.registerLazySingleton(
+    () => _useMockData ? AuthMockDataSource(prefs: getIt()) : AuthRemoteDataSourceImpl(dioClient: getIt()),
   );
 
-  // ---------- Auth: Repository ----------
-  final authRepository = AuthRepositoryImpl(
-    remoteDataSource: getIt(),
-    cache: getIt(),
-    connectivityService: getIt(),
-  );
+  final authRepository = AuthRepositoryImpl(remoteDataSource: getIt(), cache: getIt(), connectivityService: getIt());
   getIt.registerLazySingleton<AuthRepository>(() => authRepository);
 
-  // ---------- Auth: Use cases ----------
   getIt.registerLazySingleton(() => LoginUseCase(getIt()));
   getIt.registerLazySingleton(() => RegisterUseCase(getIt()));
   getIt.registerLazySingleton(() => UploadPhotoUseCase(getIt()));
   getIt.registerLazySingleton(() => GetCurrentUserUseCase(getIt()));
   getIt.registerLazySingleton(() => UpdateProfileUseCase(getIt()));
 
-  // ---------- Auth: Bloc ----------
   getIt.registerFactory(
     () => AuthBloc(
-      loginUseCase: getIt(),
-      registerUseCase: getIt(),
-      uploadPhotoUseCase: getIt(),
-      getCurrentUserUseCase: getIt(),
-      updateProfileUseCase: getIt(),
-      tokenStorage: getIt(),
+      loginUseCase: getIt(), registerUseCase: getIt(), uploadPhotoUseCase: getIt(),
+      getCurrentUserUseCase: getIt(), updateProfileUseCase: getIt(), tokenStorage: getIt(),
     ),
   );
 
-  // ---------- Workspace: Data sources ----------
-  getIt.registerLazySingleton<WorkspaceRemoteDataSource>(
-    () => _useMockData
-        ? WorkspaceMockDataSource()
-        : WorkspaceRemoteDataSourceImpl(dioClient: getIt()),
+  getIt.registerLazySingleton(
+    () => _useMockData ? WorkspaceMockDataSource() : WorkspaceRemoteDataSourceImpl(dioClient: getIt()),
   );
 
-  // ---------- Workspace: Repository ----------
-  final workspaceRepository = WorkspaceRepositoryImpl(
-    remoteDataSource: getIt(),
-    cache: getIt(),
-    connectivityService: getIt(),
-  );
+  final workspaceRepository = WorkspaceRepositoryImpl(remoteDataSource: getIt(), cache: getIt(), connectivityService: getIt());
   getIt.registerLazySingleton<WorkspaceRepository>(() => workspaceRepository);
 
-  // ---------- Workspace: Use cases ----------
   getIt.registerLazySingleton(() => GetWorkspacesUseCase(getIt()));
   getIt.registerLazySingleton(() => CreateWorkspaceUseCase(getIt()));
   getIt.registerLazySingleton(() => DeleteWorkspaceUseCase(getIt()));
 
-  // ---------- Workspace: Bloc ----------
   getIt.registerFactory(
-    () => WorkspaceBloc(
-      getWorkspacesUseCase: getIt(),
-      createWorkspaceUseCase: getIt(),
-      deleteWorkspaceUseCase: getIt(),
-    ),
+    () => WorkspaceBloc(getWorkspacesUseCase: getIt(), createWorkspaceUseCase: getIt(), deleteWorkspaceUseCase: getIt()),
   );
 
-  // ---------- Project: Data sources ----------
-  getIt.registerLazySingleton<ProjectRemoteDataSource>(
-    () => _useMockData
-        ? ProjectMockDataSource()
-        : ProjectRemoteDataSourceImpl(dioClient: getIt()),
+  getIt.registerLazySingleton(
+    () => _useMockData ? TaskMockDataSource() : TaskRemoteDataSourceImpl(dioClient: getIt()),
   );
 
-  // ---------- Project: Repository ----------
-  final projectRepository = ProjectRepositoryImpl(
-    remoteDataSource: getIt(),
-    cache: getIt(),
-    connectivityService: getIt(),
-  );
-  getIt.registerLazySingleton<ProjectRepository>(() => projectRepository);
+  
+getIt.registerLazySingleton(
+  () => _useMockData ? ProjectMockDataSource() : ProjectRemoteDataSourceImpl(dioClient: getIt()),
+);
 
-    // ---------- Project: Use cases ----------
-  getIt.registerLazySingleton(() => GetProjectsUseCase(getIt()));
-  getIt.registerLazySingleton(() => CreateProjectUseCase(getIt()));
-  getIt.registerLazySingleton(() => DeleteProjectUseCase(getIt()));
-  getIt.registerLazySingleton(() => InviteProjectMemberUseCase(getIt()));
-  getIt.registerLazySingleton(() => GetProjectMembersUseCase(getIt()));
+final taskRepository = TaskRepositoryImpl(
+  remoteDataSource: getIt(),
+  projectRemoteDataSource: getIt(), // ← جديد
+  cache: getIt(),
+  connectivityService: getIt(),
+  taskChangesBus: getIt(),
+);
+getIt.registerLazySingleton<TaskRepository>(() => taskRepository);
 
-  // ---------- Project: Bloc ----------
-  getIt.registerFactory(
-    () => ProjectBloc(
-      getProjectsUseCase: getIt(),
-      createProjectUseCase: getIt(),
-      deleteProjectUseCase: getIt(),
-    ),
-  );
-  getIt.registerFactory(
-    () => ProjectInviteBloc(inviteProjectMemberUseCase: getIt()),
-  );
-  getIt.registerFactory(
-    () => ProjectMembersBloc(getProjectMembersUseCase: getIt()),
-  );
+getIt.registerLazySingleton(() => GetTasksUseCase(getIt()));
+getIt.registerLazySingleton(() => CreateTaskUseCase(getIt()));
+getIt.registerLazySingleton(() => UpdateTaskStatusUseCase(getIt()));
+getIt.registerLazySingleton(() => UpdateTaskUseCase(getIt()));
+getIt.registerLazySingleton(() => DeleteTaskUseCase(getIt()));
+getIt.registerLazySingleton(() => UploadTaskAttachmentsUseCase(getIt()));
+getIt.registerLazySingleton(() => RemoveTaskAttachmentUseCase(getIt()));
+getIt.registerLazySingleton(() => MoveTaskToProjectUseCase(getIt()));
 
-  // ---------- Project: Picker Cubit ----------
-  getIt.registerFactory(
-    () => ProjectPickerCubit(
-      getWorkspacesUseCase: getIt(),
-      getProjectsUseCase: getIt(),
-    ),
-  );
+getIt.registerFactory(
+  () => TaskBloc(
+    getTasksUseCase: getIt(), createTaskUseCase: getIt(), updateTaskStatusUseCase: getIt(),
+    updateTaskUseCase: getIt(), uploadTaskAttachmentsUseCase: getIt(),
+    removeTaskAttachmentUseCase: getIt(), deleteTaskUseCase: getIt(), moveTaskToProjectUseCase: getIt(),
+  ),
+);
 
-  // ---------- Task: Data sources ----------
-  getIt.registerLazySingleton<TaskRemoteDataSource>(
-    () => _useMockData
-        ? TaskMockDataSource()
-        : TaskRemoteDataSourceImpl(dioClient: getIt()),
-  );
 
-  // ---------- Task: Repository ----------
-  final taskRepository = TaskRepositoryImpl(
-    remoteDataSource: getIt(),
-    cache: getIt(),
-    connectivityService: getIt(),
-    taskChangesBus: getIt(),
-  );
-  getIt.registerLazySingleton<TaskRepository>(() => taskRepository);
+final projectRepository = ProjectRepositoryImpl(
+  remoteDataSource: getIt(), cache: getIt(), connectivityService: getIt(), taskRepository: getIt(),
+);
+getIt.registerLazySingleton<ProjectRepository>(() => projectRepository);
 
-  // ---------- Task: Use cases ----------
-  getIt.registerLazySingleton(() => GetTasksUseCase(getIt()));
-  getIt.registerLazySingleton(() => CreateTaskUseCase(getIt()));
-  getIt.registerLazySingleton(() => UpdateTaskStatusUseCase(getIt()));
-  getIt.registerLazySingleton(() => UpdateTaskUseCase(getIt()));
-  getIt.registerLazySingleton(() => DeleteTaskUseCase(getIt()));
-  getIt.registerLazySingleton(() => UploadTaskAttachmentsUseCase(getIt()));
-  getIt.registerLazySingleton(() => RemoveTaskAttachmentUseCase(getIt()));
-  getIt.registerLazySingleton(() => MoveTaskToProjectUseCase(getIt()));
+getIt.registerLazySingleton(() => GetProjectsUseCase(getIt()));
+getIt.registerLazySingleton(() => CreateProjectUseCase(getIt()));
+getIt.registerLazySingleton(() => DeleteProjectUseCase(getIt()));
+getIt.registerLazySingleton(() => InviteProjectMemberUseCase(getIt()));
+getIt.registerLazySingleton(() => GetProjectMembersUseCase(getIt()));
 
-  // ---------- Task: Bloc ----------
-  getIt.registerFactory(
-    () => TaskBloc(
-      getTasksUseCase: getIt(),
-      createTaskUseCase: getIt(),
-      updateTaskStatusUseCase: getIt(),
-      updateTaskUseCase: getIt(),
-      uploadTaskAttachmentsUseCase: getIt(),
-      removeTaskAttachmentUseCase: getIt(),
-      deleteTaskUseCase: getIt(),
-      moveTaskToProjectUseCase: getIt(),
-    ),
-  );
+getIt.registerFactory(
+  () => ProjectBloc(getProjectsUseCase: getIt(), createProjectUseCase: getIt(), deleteProjectUseCase: getIt()),
+);
+getIt.registerFactory(() => ProjectInviteBloc(inviteProjectMemberUseCase: getIt()));
+getIt.registerFactory(() => ProjectMembersBloc(getProjectMembersUseCase: getIt()));
 
-  // ---------- Bin: Repository ----------
-  getIt.registerLazySingleton<BinRepository>(
-    () => BinRepositoryImpl(taskRepository: getIt()),
-  );
+getIt.registerFactory(
+  () => ProjectPickerCubit(getWorkspacesUseCase: getIt(), getProjectsUseCase: getIt()),
+);
 
-  // ---------- Bin: Use cases ----------
-  getIt.registerLazySingleton(() => GetDeletedTasksUseCase(getIt()));
-  getIt.registerLazySingleton(() => RestoreTaskUseCase(getIt()));
-  getIt.registerLazySingleton(() => DeleteTaskForeverUseCase(getIt()));
+getIt.registerLazySingleton<BinRepository>(
+  () => BinRepositoryImpl(taskRepository: getIt()),
+);
 
-  // ---------- Bin: Bloc ----------
-  getIt.registerFactory(
-    () => BinBloc(
-      getDeletedTasksUseCase: getIt(),
-      restoreTaskUseCase: getIt(),
-      deleteTaskForeverUseCase: getIt(),
-    ),
-  );
+getIt.registerLazySingleton(() => GetDeletedTasksUseCase(getIt()));
+getIt.registerLazySingleton(() => RestoreTaskUseCase(getIt()));
+getIt.registerLazySingleton(() => DeleteTaskForeverUseCase(getIt()));
+getIt.registerLazySingleton(() => GetDeletedProjectsUseCase(getIt()));
+getIt.registerLazySingleton(() => RestoreProjectUseCase(getIt()));
+getIt.registerLazySingleton(() => DeleteProjectForeverUseCase(getIt()));
 
-  // ---------- Calendar: Bloc ----------
-  getIt.registerFactory(
-    () => CalendarBloc(
-      getWorkspacesUseCase: getIt(),
-      getProjectsUseCase: getIt(),
-      getTasksUseCase: getIt(),
-      createTaskUseCase: getIt(),
-      deleteTaskUseCase: getIt(),
-      uploadTaskAttachmentsUseCase: getIt(),
-    ),
-  );
+getIt.registerFactory(
+  () => BinBloc(
+    getDeletedTasksUseCase: getIt(), restoreTaskUseCase: getIt(), deleteTaskForeverUseCase: getIt(),
+    getDeletedProjectsUseCase: getIt(), restoreProjectUseCase: getIt(), deleteProjectForeverUseCase: getIt(),
+  ),
+);
 
-  // ---------- Sync ----------
-  // كل Repository بيطبّق Syncable لازم ينضاف هون حتى يتزامن تلقائياً
-  // لحظة رجوع الاتصال بالإنترنت.
-  final syncables = <Syncable>[
-    authRepository,
-    workspaceRepository,
-    projectRepository,
-    taskRepository,
-  ];
+getIt.registerFactory(
+  () => CalendarBloc(
+    getWorkspacesUseCase: getIt(), getProjectsUseCase: getIt(), getTasksUseCase: getIt(),
+    createTaskUseCase: getIt(), deleteTaskUseCase: getIt(), uploadTaskAttachmentsUseCase: getIt(),
+  ),
+);
+
+  final syncables = <Syncable>[authRepository, workspaceRepository, projectRepository, taskRepository];
   getIt.registerLazySingleton(
     () => SyncManager(connectivityService: getIt(), syncables: syncables),
   );

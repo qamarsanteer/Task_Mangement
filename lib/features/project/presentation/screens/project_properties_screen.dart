@@ -10,7 +10,6 @@ import '../../../task/domain/entities/task_entity.dart';
 import '../../../task/domain/entities/task_progress_summary.dart';
 import '../../domain/entities/project_entity.dart';
 import '../../domain/entities/project_member_entity.dart';
-import '../../domain/entities/project_member_role.dart';
 import '../bloc/project_members_bloc.dart';
 import '../bloc/project_members_event.dart';
 import '../bloc/project_members_state.dart';
@@ -68,7 +67,6 @@ class _ProjectPropertiesView extends StatelessWidget {
     );
   }
 
-  // ─── الوصف ───
 
   Widget _buildDescriptionSection(BuildContext context, AppLocalizations l10n, bool isDark) {
     final hasDescription = project.description != null && project.description!.trim().isNotEmpty;
@@ -87,8 +85,6 @@ class _ProjectPropertiesView extends StatelessWidget {
       ),
     );
   }
-
-  // ─── التقدم + overdue + taskCountByStatus ───
 
   Widget _buildProgressSection(BuildContext context, AppLocalizations l10n, bool isDark) {
     return _SectionCard(
@@ -140,6 +136,7 @@ class _ProjectPropertiesView extends StatelessWidget {
                 runSpacing: 10,
                 children: [
                   _StatusChip(color: AppColors.textSecondaryLight, label: l10n.notStartedLabel, count: summary.notStarted),
+                  _StatusChip(color: AppColors.warning, label: l10n.pendingLabel, count: summary.pending),
                   _StatusChip(color: AppColors.info, label: l10n.inProgressLabel, count: summary.inProgress),
                   _StatusChip(color: AppColors.success, label: l10n.completedLabel, count: summary.completed),
                   if (summary.overdue > 0)
@@ -152,8 +149,6 @@ class _ProjectPropertiesView extends StatelessWidget {
       ),
     );
   }
-
-  // ─── الأعضاء ───
 
   Widget _buildMembersSection(BuildContext context, AppLocalizations l10n, bool isDark) {
     return _SectionCard(
@@ -198,8 +193,6 @@ class _ProjectPropertiesView extends StatelessWidget {
     );
   }
 }
-
-// ─── Widgets مساعدة ───
 
 class _SectionCard extends StatelessWidget {
   final bool isDark;
@@ -328,13 +321,14 @@ class _MemberTile extends StatelessWidget {
                     color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                   ),
                 ),
-                Text(
-                  member.role == ProjectMemberRole.readWrite ? l10n.permissionReadWrite : l10n.permissionReadOnly,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                if (member.fullName != null && member.fullName!.trim().isNotEmpty)
+                  Text(
+                    member.email,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

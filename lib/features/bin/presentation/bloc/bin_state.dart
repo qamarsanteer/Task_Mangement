@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import '../../../task/domain/entities/deleted_task_entry.dart';
+import '../../domain/entities/deleted_project_entry.dart';
 
 abstract class BinState extends Equatable {
   const BinState();
@@ -8,29 +9,38 @@ abstract class BinState extends Equatable {
 }
 
 class BinInitial extends BinState {}
-
 class BinLoading extends BinState {}
 
 class BinLoaded extends BinState {
-  final List<DeletedTaskEntry> entries;
-  // true وقت ما في عملية استرجاع/حذف نهائي شغالة، حتى نعطّل الأزرار
-  // بالواجهة وما يصير دبل-تاب من المستخدم لنفس العنصر.
+  final List<DeletedTaskEntry> taskEntries;
+  final List<DeletedProjectEntry> projectEntries;
   final bool isMutating;
+  final int selectedTab; // 0 = Tasks, 1 = Projects
 
-  const BinLoaded({required this.entries, this.isMutating = false});
+  const BinLoaded({
+    this.taskEntries = const [],
+    this.projectEntries = const [],
+    this.isMutating = false,
+    this.selectedTab = 0,
+  });
 
   @override
-  List<Object?> get props => [entries, isMutating];
+  List<Object?> get props => [taskEntries, projectEntries, isMutating, selectedTab];
 }
 
 class BinError extends BinState {
   final String message;
-  // منحتفظ بآخر قائمة كانت معروضة حتى لو صار خطأ (نفس منطق TaskError)،
-  // حتى ما تختفي القائمة كاملة من الشاشة بسبب فشل عملية وحدة.
-  final List<DeletedTaskEntry> entries;
+  final List<DeletedTaskEntry> taskEntries;
+  final List<DeletedProjectEntry> projectEntries;
+  final int selectedTab;
 
-  const BinError({required this.message, required this.entries});
+  const BinError({
+    required this.message,
+    this.taskEntries = const [],
+    this.projectEntries = const [],
+    this.selectedTab = 0,
+  });
 
   @override
-  List<Object?> get props => [message, entries];
+  List<Object?> get props => [message, taskEntries, projectEntries, selectedTab];
 }

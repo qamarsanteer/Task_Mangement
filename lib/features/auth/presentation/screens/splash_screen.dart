@@ -19,15 +19,12 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
-  // Tile entrance (the gradient square fading/scaling in).
   late final Animation<double> _tileScale;
   late final Animation<double> _tileOpacity;
 
-  // The route glyph tracing itself, then the destination marker landing.
   late final Animation<double> _routeProgress;
   late final Animation<double> _markerProgress;
 
-  // Wordmark + tagline + loader.
   late final Animation<Offset> _textSlide;
   late final Animation<double> _textOpacity;
   late final Animation<double> _dividerWidth;
@@ -93,18 +90,13 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _bootstrap() async {
     final authBloc = context.read<AuthBloc>();
 
-    // Start listening for the auth result BEFORE dispatching the event,
-    // so we don't miss it.
     final authStateFuture = authBloc.stream.firstWhere(
       (state) => state is AuthAuthenticated || state is AuthUnauthenticated,
     );
 
     authBloc.add(const AuthStatusChecked());
 
-    // Wait for the full animation to play out first...
     await _controller.forward();
-    // ...then make sure the auth check has actually finished
-    // (instant if it already resolved while the animation was playing).
     final authState = await authStateFuture;
 
     if (!mounted) return;

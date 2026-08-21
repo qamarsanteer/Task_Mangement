@@ -1,15 +1,12 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// طبقة عامة لتخزين وقراءة بيانات الكاش المحلي كـ JSON.
-/// تستخدمها كل الـ Repositories (Auth, Workspace, Project, Task) بنفس الطريقة،
-/// بدل ما كل feature تعيد كتابة نفس منطق التخزين.
+
 class LocalCacheService {
   final SharedPreferences _prefs;
 
   LocalCacheService(this._prefs);
 
-  // ─── تخزين/قراءة قائمة (مثلاً: قائمة Workspaces أو Tasks) ───
 
   Future<void> saveList(String key, List<Map<String, dynamic>> items) async {
     await _prefs.setString(key, jsonEncode(items));
@@ -25,8 +22,6 @@ class LocalCacheService {
       return null;
     }
   }
-
-  // ─── تخزين/قراءة عنصر واحد (مثلاً: بيانات المستخدم الحالي) ───
 
   Future<void> saveObject(String key, Map<String, dynamic> item) async {
     await _prefs.setString(key, jsonEncode(item));

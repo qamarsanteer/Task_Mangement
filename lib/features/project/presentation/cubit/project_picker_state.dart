@@ -2,9 +2,6 @@ import 'package:equatable/equatable.dart';
 import '../../../workspace/domain/entities/workspace_entity.dart';
 import '../../domain/entities/project_entity.dart';
 
-/// حالة اختيار "workspace ثم مشروع منه" — مستخدمة بأي ديالوج بيحتاج
-/// المستخدم يختار وجهة (مثلاً: نقل تاسك). حالة واحدة بدل subclasses
-/// لأنها أقرب لنموذج (form state) فيه كذا حقل مستقل، مش آلة حالات خطية.
 class ProjectPickerState extends Equatable {
   final bool isLoadingWorkspaces;
   final List<WorkspaceEntity> workspaces;
@@ -24,8 +21,6 @@ class ProjectPickerState extends Equatable {
     this.errorMessage,
   });
 
-  /// الـ workspace/project المختارين حالياً كـ entities كاملة، لسهولة
-  /// الاستخدام بالـ UI (بدل ما تدور عليهم بالـ id كل مرة).
   WorkspaceEntity? get selectedWorkspace =>
       workspaces.where((w) => w.id == selectedWorkspaceId).firstOrNull;
 

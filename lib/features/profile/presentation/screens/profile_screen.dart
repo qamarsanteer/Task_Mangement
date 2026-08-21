@@ -180,7 +180,6 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
-  // ─── Dialog تعديل الاسم لحال ───
   void _showEditNameDialog(
     BuildContext context,
     AppLocalizations l10n,
@@ -208,7 +207,6 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          // ✅ Confirm (Save) أول
           ElevatedButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
@@ -223,7 +221,6 @@ class ProfileScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
             child: Text(l10n.save),
           ),
-          // ✅ Cancel تاني
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: Text(l10n.cancel),
@@ -233,7 +230,6 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // ─── Dialog تعديل الإيميل لحال ───
   void _showEditEmailDialog(
     BuildContext context,
     AppLocalizations l10n,
@@ -266,7 +262,6 @@ class ProfileScreen extends StatelessWidget {
           ),
         ),
         actions: [
-          // ✅ Confirm (Save) أول
           ElevatedButton(
             onPressed: () {
               if (formKey.currentState!.validate()) {
@@ -281,7 +276,6 @@ class ProfileScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
             child: Text(l10n.save),
           ),
-          // ✅ Cancel تاني
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
             child: Text(l10n.cancel),
@@ -299,7 +293,6 @@ class ProfileScreen extends StatelessWidget {
         title: Text(l10n.logOutTitle),
         content: Text(l10n.areYouSureLogout),
         actions: [
-          // ✅ Confirm (Log Out) أول
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
@@ -308,7 +301,6 @@ class ProfileScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             child: Text(l10n.logout),
           ),
-          // ✅ Cancel تاني
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(l10n.cancel),
@@ -357,7 +349,6 @@ class ProfileScreen extends StatelessWidget {
             ],
           ),
         ),
-        // ✅ أيقونة القلم فقط هي اللي بتفتح التعديل
         if (onEdit != null)
           IconButton(
             icon: Icon(

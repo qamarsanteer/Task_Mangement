@@ -3,10 +3,18 @@ import '../../../../core/error/failure.dart';
 import '../repositories/project_repository.dart';
 
 class DeleteProjectUseCase {
-  final ProjectRepository repository;
-  DeleteProjectUseCase(this.repository);
+  final ProjectRepository _repository;
+  const DeleteProjectUseCase(this._repository);
 
-  Future<Either<Failure, void>> call(String projectId) {
-    return repository.deleteProject(projectId);
+  Future<Either<Failure, void>> call(
+    String projectId, {
+    required String workspaceId,
+    required String workspaceName,
+  }) {
+    return _repository.deleteProject(
+      projectId,
+      workspaceId: workspaceId,
+      workspaceName: workspaceName,
+    );
   }
 }

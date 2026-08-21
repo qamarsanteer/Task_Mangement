@@ -15,10 +15,10 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     required GetProjectsUseCase getProjectsUseCase,
     required CreateProjectUseCase createProjectUseCase,
     required DeleteProjectUseCase deleteProjectUseCase,
-  })  : _getProjectsUseCase = getProjectsUseCase,
-        _createProjectUseCase = createProjectUseCase,
-        _deleteProjectUseCase = deleteProjectUseCase,
-        super(ProjectInitial()) {
+  }) : _getProjectsUseCase = getProjectsUseCase,
+       _createProjectUseCase = createProjectUseCase,
+       _deleteProjectUseCase = deleteProjectUseCase,
+       super(ProjectInitial()) {
     on<ProjectsLoadRequested>(_onProjectsLoadRequested);
     on<ProjectCreateRequested>(_onProjectCreateRequested);
     on<ProjectDeleteRequested>(_onProjectDeleteRequested);
@@ -37,12 +37,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
   Future<void> _onProjectCreateRequested(ProjectCreateRequested event, Emitter<ProjectState> emit) async {
     final current = _currentProjects();
     emit(ProjectLoaded(projects: current, isMutating: true));
-
-    final result = await _createProjectUseCase(
-      workspaceId: event.workspaceId,
-      name: event.name,
-      description: event.description,
-    );
+    final result = await _createProjectUseCase(workspaceId: event.workspaceId, name: event.name, description: event.description);
     result.fold(
       (failure) => emit(ProjectError(message: failure.message, projects: current)),
       (newProject) => emit(ProjectLoaded(projects: [...current, newProject])),
@@ -52,8 +47,11 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
   Future<void> _onProjectDeleteRequested(ProjectDeleteRequested event, Emitter<ProjectState> emit) async {
     final current = _currentProjects();
     emit(ProjectLoaded(projects: current, isMutating: true));
-
-    final result = await _deleteProjectUseCase(event.projectId);
+    final result = await _deleteProjectUseCase(
+      event.projectId,
+      workspaceId: event.workspaceId,
+      workspaceName: event.workspaceName,
+    );
     result.fold(
       (failure) => emit(ProjectError(message: failure.message, projects: current)),
       (_) {
@@ -63,22 +61,23 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     );
   }
 
-  Future<void> _onProjectsDeleteRequested(ProjectsDeleteRequested event, Emitter<ProjectState> emit) async {
+    Future<void> _onProjectsDeleteRequested(ProjectsDeleteRequested event, Emitter<ProjectState> emit) async {
     final current = _currentProjects();
     emit(ProjectLoaded(projects: current, isMutating: true));
-
     final ids = event.projectIds;
     var updated = current;
     String? errorMessage;
-
     for (final id in ids) {
-      final result = await _deleteProjectUseCase(id);
+      final result = await _deleteProjectUseCase(
+        id,
+        workspaceId: event.workspaceId,
+        workspaceName: event.workspaceName,
+      );
       result.fold(
         (failure) => errorMessage = failure.message,
         (_) => updated = updated.where((p) => p.id != id).toList(),
       );
     }
-
     if (errorMessage != null) {
       emit(ProjectError(message: errorMessage!, projects: updated));
     } else {

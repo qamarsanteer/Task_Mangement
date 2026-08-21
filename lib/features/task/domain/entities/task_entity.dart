@@ -1,4 +1,4 @@
-enum TaskStatus { notStarted, inProgress, completed }
+enum TaskStatus { notStarted, pending, inProgress, completed }
 
 enum RepeatFrequency { none, daily, weekly, monthly }
 
@@ -10,6 +10,8 @@ class TaskEntity {
   final bool isImportant;
   final bool isUrgent;
   final DateTime? dueDate;
+   final DateTime? startDate;
+  final bool hasStartTime;
   final String projectId;
   final DateTime? createdAt;
   final String? labelId;
@@ -24,6 +26,8 @@ class TaskEntity {
     this.isImportant = false,
     this.isUrgent = false,
     this.dueDate,
+    this.startDate,
+    this.hasStartTime = false,
     required this.projectId,
     this.createdAt,
     this.labelId,
@@ -46,6 +50,8 @@ class TaskEntity {
     bool? isImportant,
     bool? isUrgent,
     DateTime? dueDate,
+    DateTime? startDate,
+    bool? hasStartTime,
     String? projectId,
     DateTime? createdAt,
     String? labelId,
@@ -60,6 +66,8 @@ class TaskEntity {
       isImportant: isImportant ?? this.isImportant,
       isUrgent: isUrgent ?? this.isUrgent,
       dueDate: dueDate ?? this.dueDate,
+      startDate: startDate ?? this.startDate,
+      hasStartTime: hasStartTime ?? this.hasStartTime,
       projectId: projectId ?? this.projectId,
       createdAt: createdAt ?? this.createdAt,
       labelId: labelId ?? this.labelId,

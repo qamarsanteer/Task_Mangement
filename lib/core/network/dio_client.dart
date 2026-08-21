@@ -34,7 +34,6 @@ class DioClient {
           return handler.next(options);
         },
         onError: (DioException error, handler) {
-          // لو التوكن منتهي أو غير صالح
           if (error.response?.statusCode == 401) {
             _tokenStorage.deleteToken();
             // TODO: لاحقاً هون رح نضيف logout event لما نعمل GetIt + auth state management أشمل

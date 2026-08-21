@@ -22,7 +22,6 @@ class ProjectInviteBloc extends Bloc<ProjectInviteEvent, ProjectInviteState> {
     final result = await _inviteProjectMemberUseCase(
       projectId: event.projectId,
       email: event.email,
-      role: event.role,
     );
 
     result.fold(

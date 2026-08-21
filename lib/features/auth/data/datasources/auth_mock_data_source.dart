@@ -3,12 +3,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'auth_remote_data_source.dart';
 
-/// نسخة وهمية (mock) لاستخدامها أثناء التطوير قبل جاهزية السيرفر.
-///
-/// بتخزّن بيانات "المستخدم" فعلياً بالـ SharedPreferences (تحت مفتاح منفصل
-/// عن كاش التطبيق نفسه، بمثابة "قاعدة بيانات وهمية") عشان تحاكي سيرفر حقيقي
-/// بيتذكر التعديلات — هيك تجربة الـ Offline-first بتكون مطابقة لشكلها
-/// مع الباك اند الحقيقي، وما تعود القيم الافتراضية بعد كل تعديل.
 class AuthMockDataSource implements AuthRemoteDataSource {
   static const _mockBackendKey = 'mock_backend_user';
 
@@ -42,7 +36,6 @@ class AuthMockDataSource implements AuthRemoteDataSource {
     await Future.delayed(const Duration(milliseconds: 500));
     final current = await getCurrentUser();
     await _persist(current.copyWith(photoUrl: photoPath));
-    // بالـ mock منرجع نفس المسار المحلي كأنه "رابط" الصورة، عشان نقدر نعاينها فوراً
     return photoPath;
   }
 
@@ -64,8 +57,6 @@ class AuthMockDataSource implements AuthRemoteDataSource {
     await _persist(updated);
     return updated;
   }
-
-  // ─── Helpers: تخزين "السيرفر الوهمي" بالـ SharedPreferences ───
 
   UserModel? _loadPersisted() {
     final raw = _prefs.getString(_mockBackendKey);

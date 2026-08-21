@@ -1,6 +1,3 @@
-/// قائمة التصنيفات (Labels) الثابتة — لو حبيتي مستقبلاً تخليها تجي من
-/// السيرفر بدل ما تكون ثابتة بالتطبيق، بس بتبدّلي محتوى `predefined`
-/// بنداء API، وباقي الكود (Model, Bloc, UI) ما بيتغير خالص.
 class TaskLabelOption {
   final String id;
   final int colorValue;

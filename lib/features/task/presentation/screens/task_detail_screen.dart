@@ -14,15 +14,6 @@ import '../bloc/task_bloc.dart';
 import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
 
-/// شاشة تفاصيل التاسك — كل خاصية (property) هون قابلة للتعديل لحالها،
-/// وبشكل منفصل عن باقي الخصائص: بيضغط المستخدم على أيقونة القلم الصغيرة
-/// جنب الخاصية يلي بدو يعدلها، فيظهرلو ديالوغ فيه الحقل جاهز للتعديل،
-/// وبعدين لازم يضغط "حفظ" (تأكيد) حتى تنطبق التعديلات — بالضبط متل نفس
-/// النمط المستخدم بشاشة البروفايل (ProfileScreen).
-///
-/// كل ديالوغ تعديل، لما يحفظ، بيبعت TaskUpdateRequested بكل حقول التاسك
-/// (مش بس الحقل يلي تغيّر) لأنه هيك عامل الـ Repository/UseCase بالباك
-/// إند (شوفي التعليق بأعلى TaskRepository.updateTask).
 class TaskDetailScreen extends StatelessWidget {
   final TaskEntity task;
   const TaskDetailScreen({super.key, required this.task});
@@ -34,8 +25,6 @@ class TaskDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(l10n.taskDetails)),
       body: BlocConsumer<TaskBloc, TaskState>(
-        // ─── منسمع لأي خطأ (متل فشل رفع مرفق) ومنعرضه بـ SnackBar، بدل ما
-        // تفشل العملية بصمت وبدون أي إشعار للمستخدم ───
         listener: (context, state) {
           if (state is TaskError) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -49,7 +38,6 @@ class TaskDetailScreen extends StatelessWidget {
           }
         },
         builder: (context, state) {
-          // نجيب أحدث نسخة من المهمة من الـ state (بعد أي تعديل بالحالة)
           final tasks = state is TaskLoaded ? state.tasks : (state is TaskError ? state.tasks : <TaskEntity>[]);
           TaskEntity currentTask = task;
           for (final t in tasks) {
@@ -68,7 +56,6 @@ class TaskDetailScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ─── العنوان ───
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -94,7 +81,6 @@ class TaskDetailScreen extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // ─── الوصف ───
                 _buildSectionHeader(
                   context: context,
                   isDark: isDark,
@@ -110,7 +96,6 @@ class TaskDetailScreen extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // ─── الحالة (Status) — قابلة للتعديل مباشرة (تاغز)، ما بتحتاج قلم ───
                 Text(l10n.status, style: _sectionTitleStyle(isDark)),
                 const SizedBox(height: 8),
                 Wrap(
@@ -133,7 +118,6 @@ class TaskDetailScreen extends StatelessWidget {
 
                 const SizedBox(height: 24),
 
-                // ─── تاريخ الاستحقاق ───
                 _buildEditableInfoRow(
                   context: context,
                   isDark: isDark,
@@ -149,8 +133,19 @@ class TaskDetailScreen extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // ─── الأولوية — محورين مستقلين (أهمية/استعجال)، فبنعرض
-                // حالة كل محور بوضوح حتى لما تكون "غير مهم وغير عاجل" ───
+                _buildEditableInfoRow(
+                  context: context,
+                  isDark: isDark,
+                  label: l10n.startDateLabel,
+                  value: currentTask.startDate != null
+                      ? (currentTask.hasStartTime ? _formatDateTime(currentTask.startDate!) : _formatDate(currentTask.startDate!))
+                      : '-',
+                  tooltip: l10n.editStartDate,
+                  onEdit: isMutating ? null : () => _showEditStartDateDialog(context, l10n, currentTask),
+                ),
+
+                const SizedBox(height: 16),
+
                 _buildEditableInfoRow(
                   context: context,
                   isDark: isDark,
@@ -164,7 +159,6 @@ class TaskDetailScreen extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // ─── التصنيف (Label) ───
                 _buildSectionHeader(
                   context: context,
                   isDark: isDark,
@@ -184,7 +178,6 @@ class TaskDetailScreen extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // ─── التكرار ───
                 _buildEditableInfoRow(
                   context: context,
                   isDark: isDark,
@@ -196,13 +189,11 @@ class TaskDetailScreen extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // ─── تاريخ الإضافة — للعرض فقط، ما بتتعدل (حقل نظام) ───
                 if (currentTask.createdAt != null) ...[
                   _buildInfoRow(context, l10n.addDateLabel, _formatDate(currentTask.createdAt!), isDark),
                   const SizedBox(height: 16),
                 ],
 
-                // ─── المرفقات ───
                 _buildSectionHeader(
                   context: context,
                   isDark: isDark,
@@ -248,7 +239,6 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── عناصر بناء عامة (UI helpers) ───
 
   TextStyle _sectionTitleStyle(bool isDark) {
     return TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight);
@@ -269,7 +259,6 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  /// عنوان قسم (متل "الوصف" أو "التصنيف") مع أيقونة تعديل جنبو.
   Widget _buildSectionHeader({
     required BuildContext context,
     required bool isDark,
@@ -287,7 +276,6 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  /// صف "تسمية: قيمة" للعرض فقط، بدون أيقونة تعديل (حقول نظام).
   Widget _buildInfoRow(BuildContext context, String label, String value, bool isDark) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -303,7 +291,6 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  /// نفس _buildInfoRow بس مع أيقونة قلم بآخر الصف لفتح ديالوغ التعديل.
   Widget _buildEditableInfoRow({
     required BuildContext context,
     required bool isDark,
@@ -327,7 +314,6 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── ديالوغات التعديل — كل واحد لحاله، وبيبعت TaskUpdateRequested بكل الحقول ───
 
   void _dispatchUpdate(
     BuildContext context,
@@ -338,6 +324,8 @@ class TaskDetailScreen extends StatelessWidget {
     bool? isUrgent,
     DateTime? dueDate,
     bool clearDueDate = false,
+    DateTime? startDate,
+    bool? hasStartTime,
     String? labelId,
     bool clearLabel = false,
     RepeatFrequency? repeatFrequency,
@@ -349,12 +337,13 @@ class TaskDetailScreen extends StatelessWidget {
           isImportant: isImportant ?? base.isImportant,
           isUrgent: isUrgent ?? base.isUrgent,
           dueDate: clearDueDate ? null : (dueDate ?? base.dueDate),
+          startDate: startDate ?? base.startDate,
+          hasStartTime: hasStartTime ?? base.hasStartTime,
           labelId: clearLabel ? null : (labelId ?? base.labelId),
           repeatFrequency: repeatFrequency ?? base.repeatFrequency,
         ));
   }
 
-  // ─── تعديل العنوان لحاله ───
   void _showEditTitleDialog(BuildContext context, AppLocalizations l10n, TaskEntity currentTask) {
     final titleController = TextEditingController(text: currentTask.title);
     final formKey = GlobalKey<FormState>();
@@ -391,7 +380,6 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── تعديل الوصف لحاله ───
   void _showEditDescriptionDialog(BuildContext context, AppLocalizations l10n, TaskEntity currentTask) {
     final descriptionController = TextEditingController(text: currentTask.description ?? '');
 
@@ -422,10 +410,7 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── تعديل تاريخ الاستحقاق لحاله ───
   void _showEditDueDateDialog(BuildContext context, AppLocalizations l10n, TaskEntity currentTask) {
-    // تاريخ الاستحقاق صار حقل إجباري، فما عاد في خيار "مسح التاريخ" هون —
-    // المستخدم بس بيقدر يبدّل التاريخ لتاريخ تاني، مش يخليه فاضي.
     DateTime? selectedDate = currentTask.dueDate;
     String? errorText;
 
@@ -476,9 +461,80 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── تعديل الأولوية (مهم/غير مهم) و(عاجل/غير عاجل) — محورين مستقلين،
-  // كل واحد فيهم اختيار إجباري بين قيمتين، فما فيه حاجة لأي validation
-  // لأنه دايماً في قيمة محددة ───
+  void _showEditStartDateDialog(BuildContext context, AppLocalizations l10n, TaskEntity currentTask) {
+    DateTime? selectedDate = currentTask.startDate;
+    TimeOfDay? selectedTime =
+        currentTask.hasStartTime && currentTask.startDate != null ? TimeOfDay.fromDateTime(currentTask.startDate!) : null;
+    String? errorText;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(l10n.editStartDate),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              InkWell(
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: dialogContext,
+                    initialDate: selectedDate ?? DateTime.now(),
+                    firstDate: DateTime.now().subtract(const Duration(days: 365 * 2)),
+                    lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                  );
+                  if (picked != null) setState(() { selectedDate = picked; errorText = null; });
+                },
+                child: InputDecorator(
+                  decoration: InputDecoration(labelText: l10n.startDateLabel, errorText: errorText),
+                  child: Text(selectedDate != null ? _formatDate(selectedDate!) : l10n.selectStartDate),
+                ),
+              ),
+              const SizedBox(height: 16),
+              InkWell(
+                onTap: () async {
+                  final picked = await showTimePicker(
+                    context: dialogContext,
+                    initialTime: selectedTime ?? TimeOfDay.now(),
+                  );
+                  if (picked != null) setState(() => selectedTime = picked);
+                },
+                child: InputDecorator(
+                  decoration: InputDecoration(labelText: l10n.startTimeLabel),
+                  child: Text(selectedTime != null ? selectedTime!.format(dialogContext) : l10n.selectStartTime),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                if (selectedDate == null) {
+                  setState(() => errorText = l10n.requiredField);
+                  return;
+                }
+                final combined = DateTime(
+                  selectedDate!.year,
+                  selectedDate!.month,
+                  selectedDate!.day,
+                  selectedTime?.hour ?? 0,
+                  selectedTime?.minute ?? 0,
+                );
+                _dispatchUpdate(context, currentTask, startDate: combined, hasStartTime: selectedTime != null);
+                Navigator.pop(dialogContext);
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+              child: Text(l10n.save),
+            ),
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: Text(l10n.cancel)),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showEditPriorityDialog(BuildContext context, AppLocalizations l10n, TaskEntity currentTask) {
     bool isImportant = currentTask.isImportant;
     bool isUrgent = currentTask.isUrgent;
@@ -526,10 +582,7 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── تعديل التصنيف (Label) لحاله ───
   void _showEditLabelDialog(BuildContext context, AppLocalizations l10n, TaskEntity currentTask) {
-    // التصنيف صار حقل إجباري، فشلنا خيار "بدون تصنيف" — المستخدم لازم
-    // يختار تصنيف من القائمة، وبيقدر بس يبدّل التصنيف مش يمسحه بالكامل.
     String? selectedLabelId = currentTask.labelId;
     String? errorText;
 
@@ -583,7 +636,6 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── تعديل التكرار لحاله ───
   void _showEditRepeatDialog(BuildContext context, AppLocalizations l10n, TaskEntity currentTask) {
     RepeatFrequency repeatFrequency = currentTask.repeatFrequency;
 
@@ -615,20 +667,11 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── إضافة مرفقات — بتنفتح مباشرة (بدون ديالوغ تأكيد إضافي، لأنه اختيار
-  // الملفات نفسه هو التأكيد؛ بمجرد ما تختار ملف بينرفع فوراً) ───
   Future<void> _addAttachments(BuildContext context, String taskId) async {
     final bloc = context.read<TaskBloc>();
     final result = await FilePicker.platform.pickFiles(allowMultiple: true, withData: true);
     if (result != null) {
-      // على الويب (Chrome)، الوصول لـ PlatformFile.path مش بيرجّع null —
-      // عم يرمي Exception فوراً (file_picker 8.x)! يعني ?? ما كانت توصل
-      // تشتغل أصلاً، والاستثناء كان عم يوقع بمنتصف .map() بدون ما ينلقط
-      // بأي مكان، فـ Bloc ما كان يوصله الـ event نهائياً — هيك بالضبط كانت
-      // بتصير المشكلة بصمت. هلق منتفادى لمس .path كلياً إذا كنا عالويب.
       final paths = result.files.map((f) => kIsWeb ? f.name : (f.path ?? f.name)).toList();
-      // منخزّن محتوى الملف (bytes) بالذاكرة حتى نقدر نفتحه/نعاينه من نفس
-      // الشاشة (شوفي attachment_bytes_cache.dart لتفاصيل ليش بالذاكرة بس).
       for (final f in result.files) {
         if (f.bytes != null) {
           AttachmentBytesCache.instance.put(kIsWeb ? f.name : (f.path ?? f.name), f.bytes!);
@@ -640,8 +683,6 @@ class TaskDetailScreen extends StatelessWidget {
     }
   }
 
-  // ─── حذف مرفق موجود — منسأل تأكيد قبل ما نحذف، لأنه هون فعل غير قابل
-  // للتراجع (ما متل الإضافة يلي بتصير مباشرة) ───
   void _confirmRemoveAttachment(BuildContext context, AppLocalizations l10n, String taskId, String url) {
     final bloc = context.read<TaskBloc>();
     final fileName = url.split('/').last;
@@ -667,16 +708,9 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── فتح/معاينة مرفق موجود بالضغط عليه — هلق منفتح شاشة معاينة جوا
-  // التطبيق (AttachmentPreviewScreen) بدل ما نخلي الملف ينزّل مباشرة
-  // عالجهاز؛ التحميل الفعلي صار فعل منفصل وصريح جوا هاي الشاشة (زر
-  // "تحميل") ───
   Future<void> _openAttachment(BuildContext context, AppLocalizations l10n, String url) async {
     final bytes = AttachmentBytesCache.instance.get(url);
     if (bytes == null) {
-      // صار Refresh للصفحة أو التطبيق أعيد فتحه من جديد، فمحتوى الملف
-      // (المخزّن بالذاكرة بس حالياً لعدم وجود سيرفر حقيقي) ضاع، وضل بس
-      // اسمه محفوظ. هاد قيد مؤقت لحد ما ينضاف سيرفر رفع فعلي.
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.attachmentContentUnavailable),
@@ -695,12 +729,13 @@ class TaskDetailScreen extends StatelessWidget {
     );
   }
 
-  // ─── Helpers نصّية ───
 
   String _statusLabel(AppLocalizations l10n, TaskStatus status) {
     switch (status) {
       case TaskStatus.notStarted:
         return l10n.taskStatusNotStarted;
+      case TaskStatus.pending:
+        return l10n.taskStatusPending;
       case TaskStatus.inProgress:
         return l10n.taskStatusInProgress;
       case TaskStatus.completed:
@@ -740,5 +775,12 @@ class TaskDetailScreen extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  // ─── تنسيق تاريخ + ساعة مع بعض (لعرض تاريخ بدء العمل) ───
+  String _formatDateTime(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '${_formatDate(date)} — $hour:$minute';
   }
 }

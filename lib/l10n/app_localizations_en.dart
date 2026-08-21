@@ -280,6 +280,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notStartedLabel => 'Not started';
 
   @override
+  String get pendingLabel => 'Pending';
+
+  @override
   String get inProgressLabel => 'In progress';
 
   @override
@@ -376,6 +379,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskStatusNotStarted => 'Not Started';
 
   @override
+  String get taskStatusPending => 'Pending';
+
+  @override
   String get taskStatusInProgress => 'In Progress';
 
   @override
@@ -398,6 +404,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewCalendar => 'Calendar';
+
+  @override
+  String get timelineNoTimeSection => 'No specific time';
+
+  @override
+  String timelineShowAll(Object count) {
+    return 'Show all ($count)';
+  }
+
+  @override
+  String get timelineShowLess => 'Show less';
 
   @override
   String get taskDetails => 'Task Details';
@@ -625,6 +642,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get send => 'Send';
+
+  @override
+  String get deletedProjects => 'Deleted Projects';
+
+  @override
+  String get noDeletedProjects => 'No deleted projects';
+
+  @override
+  String get viewTasks => 'View tasks';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get projectRestored => 'Project restored successfully';
+
+  @override
+  String get deleteProjectForever => 'Delete project forever';
+
+  @override
+  String projectDeleteWarning(Object count) {
+    return 'This project contains $count tasks. They will all be permanently deleted.';
+  }
+
+  @override
+  String get projectDeletedForever => 'Project deleted permanently';
+
+  @override
+  String get tasks => 'tasks';
+
+  @override
+  String get startDateLabel => 'Start Date';
+
+  @override
+  String get selectStartDate => 'Select start date';
+
+  @override
+  String get startTimeLabel => 'Start Time (optional)';
+
+  @override
+  String get selectStartTime => 'Select time';
+
+  @override
+  String get editStartDate => 'Edit Start Date & Time';
 
   @override
   String inviteSentMessage(String email) {

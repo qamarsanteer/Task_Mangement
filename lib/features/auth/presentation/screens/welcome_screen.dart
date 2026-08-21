@@ -28,8 +28,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   void initState() {
     super.initState();
 
-    // Same curves/feel as the splash screen's entrance, so the handoff
-    // between the two screens reads as one continuous motion.
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),

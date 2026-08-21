@@ -9,9 +9,6 @@ abstract class CalendarEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-/// بيجيب كل تاسكات المستخدم (من كل الورك سبيسات/المشاريع + الـ Inbox).
-/// [inboxLabel] هو اسم "Inbox" المترجم — بيتمرر من الشاشة (مصدره
-/// AppLocalizations) لأنه الـ Bloc نفسه ما بيوصل على BuildContext.
 class CalendarTasksLoadRequested extends CalendarEvent {
   final String inboxLabel;
   const CalendarTasksLoadRequested({required this.inboxLabel});

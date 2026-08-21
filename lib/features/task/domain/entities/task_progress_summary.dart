@@ -1,29 +1,30 @@
 import 'task_entity.dart';
 
-/// ملخّص محسوب من لستة التاسكات — مش مخزّن بقاعدة البيانات ولا بالـ
-/// ProjectEntity، لأنه بيصير قديم (stale) أول ما تتبدّل حالة تاسك.
-/// دايمًا بنحسبه من List<TaskEntity> الفعلية وقت العرض.
 class TaskProgressSummary {
   final int notStarted;
+  final int pending;
   final int inProgress;
   final int completed;
   final int overdue;
 
   const TaskProgressSummary({
     this.notStarted = 0,
+    this.pending = 0,
     this.inProgress = 0,
     this.completed = 0,
     this.overdue = 0,
   });
 
-  int get total => notStarted + inProgress + completed;
+  int get total => notStarted + pending + inProgress + completed;
 
   double get completedRatio => total == 0 ? 0 : completed / total;
   double get inProgressRatio => total == 0 ? 0 : inProgress / total;
   double get notStartedRatio => total == 0 ? 0 : notStarted / total;
+  double get pendingRatio => total == 0 ? 0 : pending / total;
 
   factory TaskProgressSummary.fromTasks(List<TaskEntity> tasks) {
     int notStarted = 0;
+    int pending = 0;
     int inProgress = 0;
     int completed = 0;
     int overdue = 0;
@@ -32,6 +33,9 @@ class TaskProgressSummary {
       switch (task.status) {
         case TaskStatus.notStarted:
           notStarted++;
+          break;
+        case TaskStatus.pending:
+          pending++;
           break;
         case TaskStatus.inProgress:
           inProgress++;
@@ -45,6 +49,7 @@ class TaskProgressSummary {
 
     return TaskProgressSummary(
       notStarted: notStarted,
+      pending: pending,
       inProgress: inProgress,
       completed: completed,
       overdue: overdue,

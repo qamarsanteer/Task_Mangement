@@ -13,8 +13,6 @@ import '../../domain/entities/task_with_context.dart';
 import 'calendar_event.dart';
 import 'calendar_state.dart';
 
-/// نتيجة داخلية بتجمع كل بيانات الكالندر (تاسكات + ورك سبيسات + خيارات
-/// مشاريع) — مش جزء من الـ State العام، بس helper داخلي للـ Bloc.
 class _CalendarData {
   final List<TaskWithContext> tasks;
   final List<WorkspaceEntity> workspaces;
@@ -108,9 +106,6 @@ class CalendarBloc extends Bloc<CalendarEvent, CalendarState> {
 
     final newTask = createResult.fold((_) => null, (task) => task)!;
 
-    // لو المستخدم رفق ملفات، منرفعها بعد ما نخلق التاسك. التاسك أصلاً
-    // انخلق بنجاح، فحتى لو فشل رفع المرفقات ما منلغي التاسك نفسه —
-    // منكمل بصمت وبنعتمد على إعادة التحميل تحت لعرض آخر حالة فعلية.
     if (event.attachmentPaths.isNotEmpty) {
       await _uploadTaskAttachmentsUseCase(taskId: newTask.id, filePaths: event.attachmentPaths);
     }
@@ -168,10 +163,6 @@ class CalendarBloc extends Bloc<CalendarEvent, CalendarState> {
     );
   }
 
-  /// منجيب كل الورك سبيسات، وبكل وحدة فيهم كل المشاريع، وبكل مشروع كل
-  /// التاسكات — وهيك منضمن إنو الكالندر بيشوف تاسكات المستخدم كلها،
-  /// مهما كان المشروع أو الورك سبيس يلي هي فيه. الـ Inbox منجيبه منفصل
-  /// لأنه مش تابع لأي workspace حقيقي.
   Future<Either<String, _CalendarData>> _fetchAll(String inboxLabel) async {
     try {
       final workspacesResult = await _getWorkspacesUseCase();

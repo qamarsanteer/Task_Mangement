@@ -1,5 +1,4 @@
 import '../../../../core/network/dio_client.dart';
-import '../../domain/entities/project_member_role.dart';
 import '../models/project_model.dart';
 import '../models/project_member_model.dart';
 
@@ -17,7 +16,6 @@ abstract class ProjectRemoteDataSource {
   Future<void> inviteMember({
     required String projectId,
     required String email,
-    required ProjectMemberRole role,
   });
 
   Future<List<ProjectMemberModel>> getMembers(String projectId);
@@ -57,13 +55,11 @@ class ProjectRemoteDataSourceImpl implements ProjectRemoteDataSource {
   Future<void> inviteMember({
     required String projectId,
     required String email,
-    required ProjectMemberRole role,
   }) async {
     await _dioClient.post(
       '/projects/$projectId/members',
       data: {
         'email': email,
-        'role': role.apiValue,
       },
     );
   }

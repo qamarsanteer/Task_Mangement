@@ -70,6 +70,8 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       isImportant: event.isImportant,
       isUrgent: event.isUrgent,
       dueDate: event.dueDate,
+      startDate: event.startDate,
+      hasStartTime: event.hasStartTime,
       labelId: event.labelId,
       repeatFrequency: event.repeatFrequency,
     );
@@ -125,6 +127,8 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
       isImportant: event.isImportant,
       isUrgent: event.isUrgent,
       dueDate: event.dueDate,
+      startDate: event.startDate,
+      hasStartTime: event.hasStartTime,
       labelId: event.labelId,
       repeatFrequency: event.repeatFrequency,
     );
@@ -145,7 +149,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     result.fold(
       (failure) => emit(TaskError(message: failure.message, tasks: current)),
       (urls) {
-        // منضيف الروابط الجداد لقائمة المرفقات الحالية (مش منستبدلها).
         final updatedList = current.map((t) {
           if (t.id != event.taskId) return t;
           return t.copyWith(attachmentUrls: [...t.attachmentUrls, ...urls]);
@@ -216,9 +219,6 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
     }
   }
 
-  /// نقل التاسك لمشروع تاني (مستخدمة أساساً من شاشة الـ Inbox). بما إنه
-  /// projectId تبع التاسك بيتغيّر، التاسك ما عاد ينتمي للقائمة الحالية
-  /// (Inbox)، فمنشيله منها بعد نجاح النقل — تماماً متل منطق الحذف.
   Future<void> _onTaskMoveRequested(TaskMoveRequested event, Emitter<TaskState> emit) async {
     final current = _currentTasks();
     emit(TaskLoaded(tasks: current, isMutating: true));

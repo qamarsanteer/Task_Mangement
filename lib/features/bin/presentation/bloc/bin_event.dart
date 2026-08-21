@@ -6,12 +6,8 @@ abstract class BinEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-/// طلب تحميل قائمة سلة المحذوفات. البلوك بيعمل تنظيف تلقائي (lazy purge)
-/// لأي تاسك عدّى عليه 30 يوم قبل ما يرجّع القائمة (نفس منطق
-/// TaskRepository.getDeletedTasks).
 class LoadDeletedTasks extends BinEvent {}
 
-/// استرجاع تاسك من السلة لمكانه الأصلي (نفس المشروع اللي كان فيه).
 class RestoreTask extends BinEvent {
   final String taskId;
   const RestoreTask(this.taskId);
@@ -19,10 +15,25 @@ class RestoreTask extends BinEvent {
   List<Object?> get props => [taskId];
 }
 
-/// حذف نهائي من السلة — ما في رجعة بعده.
 class DeleteTaskForever extends BinEvent {
   final String taskId;
   const DeleteTaskForever(this.taskId);
   @override
   List<Object?> get props => [taskId];
+}
+
+class LoadDeletedProjects extends BinEvent {}
+
+class RestoreProject extends BinEvent {
+  final String projectId;
+  const RestoreProject(this.projectId);
+  @override
+  List<Object?> get props => [projectId];
+}
+
+class DeleteProjectForever extends BinEvent {
+  final String projectId;
+  const DeleteProjectForever(this.projectId);
+  @override
+  List<Object?> get props => [projectId];
 }

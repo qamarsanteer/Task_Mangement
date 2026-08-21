@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/colors.dart';
 
-/// عنصر واجهة لاختيار إجباري بين قيمتين (true/false) — بشكل زرين
-/// جنب بعض بديل عن الـ Checkbox، حتى يكون واضح إنه لازم يختار المستخدم
-/// واحد من الحالتين دايماً (مافي حالة "مش محدد").
-///
-/// مستخدم حالياً لاختيار (مهم/غير مهم) و(عاجل/غير عاجل) لأنه بيمثل
-/// محورين مستقلين عن بعض، كل واحد فيهم إجباري.
 class SegmentedToggle extends StatelessWidget {
   final String? label;
   final String trueLabel;

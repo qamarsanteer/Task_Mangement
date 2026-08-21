@@ -3,11 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../network/connectivity_service.dart';
 import 'syncable.dart';
 
-/// بيسمع لحظة رجوع الإنترنت وبينده كل الـ Repositories (Syncable)
-/// حتى تبعت أي تعديلات صارت وقت ما كان الموبايل أوفلاين.
-///
-/// يتسجّل كـ singleton واحد بالـ service locator، وينادى `start()` مرة
-/// وحدة بس عند إقلاع التطبيق (بـ main.dart).
 class SyncManager {
   final ConnectivityService _connectivityService;
   final List<Syncable> _syncables;
@@ -21,11 +16,8 @@ class SyncManager {
   })  : _connectivityService = connectivityService,
         _syncables = syncables;
 
-  /// يبلش الاستماع لتغيّرات الاتصال، وكمان يجرب مزامنة فورية
-  /// (بحال كان في تعديلات معلّقة من جلسة سابقة قبل ما يفتح التطبيق).
   void start() {
     _subscription = _connectivityService.onConnectivityChanged.listen((isConnected) {
-      // منزامن بس لما نكون *رجعنا* متصلين (مش كل مرة الـ stream يبعت حدث).
       if (isConnected && !_wasConnected) {
         syncAll();
       }
@@ -49,8 +41,6 @@ class SyncManager {
         debugPrint('[SyncManager] ${syncable.runtimeType} — تمت المزامنة بنجاح.');
       } catch (e) {
         debugPrint('[SyncManager] ${syncable.runtimeType} — فشلت المزامنة: $e');
-        // إذا فشلت مزامنة Repository وحدة (مثلاً السيرفر رجع خطأ)،
-        // منكمل بالباقي ومنجرب هاي كمان بالمرة الجاية.
       }
     }
   }

@@ -1,5 +1,4 @@
 import '../../domain/entities/project_member_entity.dart';
-import '../../domain/entities/project_member_role.dart';
 
 class ProjectMemberModel extends ProjectMemberEntity {
   const ProjectMemberModel({
@@ -8,7 +7,6 @@ class ProjectMemberModel extends ProjectMemberEntity {
     required super.email,
     super.fullName,
     super.avatarUrl,
-    required super.role,
     required super.status,
     required super.invitedAt,
     super.joinedAt,
@@ -21,7 +19,6 @@ class ProjectMemberModel extends ProjectMemberEntity {
       email: json['email'] ?? '',
       fullName: json['full_name'] as String?,
       avatarUrl: json['avatar_url'] as String?,
-      role: _roleFromApiValue(json['role']?.toString()),
       status: _statusFromApiValue(json['status']?.toString()),
       invitedAt: DateTime.tryParse(json['invited_at']?.toString() ?? '') ?? DateTime.now(),
       joinedAt: json['joined_at'] != null ? DateTime.tryParse(json['joined_at'].toString()) : null,
@@ -35,21 +32,10 @@ class ProjectMemberModel extends ProjectMemberEntity {
       'email': email,
       if (fullName != null) 'full_name': fullName,
       if (avatarUrl != null) 'avatar_url': avatarUrl,
-      'role': role.apiValue,
       'status': status.name,
       'invited_at': invitedAt.toIso8601String(),
       if (joinedAt != null) 'joined_at': joinedAt!.toIso8601String(),
     };
-  }
-
-  static ProjectMemberRole _roleFromApiValue(String? value) {
-    switch (value) {
-      case 'read_write':
-        return ProjectMemberRole.readWrite;
-      case 'read_only':
-      default:
-        return ProjectMemberRole.readOnly;
-    }
   }
 
   static InviteStatus _statusFromApiValue(String? value) {

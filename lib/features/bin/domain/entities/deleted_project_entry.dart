@@ -1,23 +1,25 @@
-import 'task_entity.dart';
+import '../../../project/domain/entities/project_entity.dart';
+import '../../../task/domain/entities/task_entity.dart';
 
-class DeletedTaskEntry {
+class DeletedProjectEntry {
   static const int retentionDays = 30;
 
-  final TaskEntity task;
-  final String projectName;
+  final ProjectEntity project;
+  final List<TaskEntity> tasks;
   final String workspaceId;
   final String workspaceName;
   final DateTime deletedAt;
 
-  const DeletedTaskEntry({
-    required this.task,
-    required this.projectName,
+  const DeletedProjectEntry({
+    required this.project,
+    required this.tasks,
     required this.workspaceId,
     required this.workspaceName,
     required this.deletedAt,
   });
 
-  String get taskId => task.id;
+  String get projectId => project.id;
+  int get taskCount => tasks.length;
 
   int get daysRemaining {
     final elapsed = DateTime.now().difference(deletedAt).inDays;

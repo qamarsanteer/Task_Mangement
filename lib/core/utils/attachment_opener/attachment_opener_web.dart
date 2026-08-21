@@ -2,16 +2,8 @@
 import 'dart:typed_data';
 import 'dart:html' as html;
 
-/// نتيجة محاولة تحميل/حفظ المرفق، حتى الشاشة تقدر تعرض رسالة مناسبة
-/// لكل حالة (نجاح / المستخدم ألغى / فشل فعلي).
 enum AttachmentDownloadResult { saved, cancelled, failed }
 
-/// نسخة الويب: بدل ما نفتح الملف بتاب جديد (اللي كان بيخلي المتصفح
-/// ينزّله مباشرة لأنواع كتير من الملفات زي docx/xlsx، أو يفتحه بره
-/// التطبيق للصور/الـ PDF) — هلق منعمل تحميل صريح فقط عند ما المستخدم
-/// يضغط زر "تحميل" تحديداً، عن طريق عنصر <a download> مخفي. هيك
-/// المعاينة جوا التطبيق (AttachmentPreviewScreen) صارت منفصلة تماماً
-/// عن فعل التحميل نفسه.
 Future<AttachmentDownloadResult> downloadAttachmentBytes({
   required String fileName,
   required Uint8List bytes,

@@ -14,9 +14,6 @@ import '../bloc/task_event.dart';
 import '../bloc/task_state.dart';
 import 'task_detail_screen.dart';
 
-/// وصف عمود واحد بالـ Board (ربع من مصفوفة أيزنهاور: أهمية × استعجال).
-/// كل عمود بيعرض بس التاسكات يلي بتطابق (isImportant, isUrgent) تبعتو،
-/// وضمن نفس المشروع الحالي (project.id) — مش كل تاسكات الـ workspace.
 class _Quadrant {
   final bool isImportant;
   final bool isUrgent;
@@ -70,12 +67,6 @@ final List<_Quadrant> _quadrants = [
   ),
 ];
 
-/// شاشة عرض تاسكات مشروع واحد بشكل Board مبني على مصفوفة أيزنهاور
-/// (مهم/عاجل). أربع أعمدة ثابتة — بدون drag & drop حالياً، التنقل بين
-/// الأرباع بيصير من شاشة تفاصيل التاسك (تعديل isImportant/isUrgent).
-/// بتستخدم نفس TaskBloc الموجود مسبقاً بالـ context (مررناه بـ
-/// BlocProvider.value من TasksScreen)، فمافي تحميل إضافي ولا استدعاء
-/// جديد للـ API — هاي بس شاشة عرض/تصنيف تانية لنفس التاسكات المحمّلة.
 class BoardViewScreen extends StatelessWidget {
   final ProjectEntity project;
   final String workspaceName;
@@ -281,11 +272,6 @@ class _BoardColumn extends StatelessWidget {
     );
   }
 
-  /// ديالوج إضافة التاسك بالبورد — نفس حقول ديالوج الإضافة بشاشة
-  /// الكالندر/التاسكات بالضبط (كل الحقول إجبارية ما عدا الوصف
-  /// والمرفقات)، بفرق واحد: هون الأهمية والاستعجال مش قابلين للتعديل
-  /// من المستخدم إطلاقاً — بيتثبتوا تلقائياً حسب العمود (الربع) يلي
-  /// المستخدم ضغط "إضافة" فيه، وبيظهروا بس كبطاقة للعرض (Read-only).
   void _showQuickAddDialog(BuildContext context, AppLocalizations l10n) {
     final bloc = context.read<TaskBloc>();
     final titleController = TextEditingController();
@@ -316,9 +302,6 @@ class _BoardColumn extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // بطاقة تعرض الأهمية/الاستعجال الثابتين تبع هاد العمود
-                  // بس للعرض — المستخدم ما بيقدر يبدلهم من هون، لأنهم
-                  // محددين أصلاً حسب العمود يلي ضغط "إضافة" فيه.
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -479,8 +462,6 @@ class _BoardColumn extends StatelessWidget {
                     projectId: project.id,
                     title: titleController.text.trim(),
                     description: descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
-                    // ثابتين حسب العمود (الربع) وما إلهم علاقة بأي اختيار
-                    // من المستخدم بهاد الديالوج.
                     isImportant: quadrant.isImportant,
                     isUrgent: quadrant.isUrgent,
                     dueDate: selectedDate,
@@ -562,16 +543,12 @@ class _BoardCard extends StatelessWidget {
           ),
         ),
         child: Padding(
-          // مساواة من كل الجهات — ما عاد في زر ثابت على اليمين
           padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ═══════════════════════════════════════════════════════
-              // صف العنوان + مربع الحذف (يتحرك حسب اتجاه اللغة)
-              // ═══════════════════════════════════════════════════════
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,  // نفس TasksScreen
+                crossAxisAlignment: CrossAxisAlignment.start,  
                 children: [
                   IconButton(
                     icon: const Icon(Icons.check_box_outline_blank, color: AppColors.error),

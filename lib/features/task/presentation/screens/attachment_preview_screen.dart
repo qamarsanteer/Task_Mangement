@@ -9,32 +9,6 @@ import '../../../../core/utils/attachment_opener/attachment_opener.dart';
 import '../../../../core/utils/office_document_extractor.dart';
 import '../../../../l10n/app_localizations.dart';
 
-/// شاشة معاينة مرفق واحد جوا التطبيق (بدل ما نفتحه بره التطبيق أو
-/// ننزّله مباشرة بمجرد ما يضغط المستخدم عليه). المعاينة والتحميل هلق
-/// فعلين منفصلين تماماً:
-/// - الضغط على المرفق بالقائمة → بيفتح هاي الشاشة ويعرض المحتوى، لأكبر
-///   عدد ممكن من أنواع الملفات (صور، نصوص، Word، PowerPoint، Excel،
-///   PDF).
-/// - زر "تحميل" الصريح بأعلى/أسفل الشاشة → هو الوحيد يلي بيحفظ/ينزّل
-///   الملف فعلياً عالجهاز، وبيختار المستخدم مكان الحفظ بنفسه.
-///
-/// **ملاحظة مهمة عن الاعتماديات (packages):** معاينة Word/PowerPoint/
-/// Excel هون مبنية على استخراج النص/الخلايا مباشرة من ملفات XML جوا
-/// الأرشيف (بدون تنسيقات أو صور أو جداول متقدمة) عن طريق
-/// `OfficeDocumentExtractor` (يحتاج: `archive` و `xml`). أما معاينة
-/// PDF فبتحتاج مكتبة عرض حقيقية، فاستخدمت
-/// `syncfusion_flutter_pdfviewer` (فيها رخصة مجانية Community License
-/// لحد حجم شركة/إيرادات معيّن — تأكدي من شروطها إلها علاقة فيكي أو لا).
-/// لازم تضيفي هاد الاعتماديات لـ pubspec.yaml:
-/// ```yaml
-/// dependencies:
-///   archive: ^3.6.1
-///   xml: ^6.5.0
-///   syncfusion_flutter_pdfviewer: ^26.2.14
-/// ```
-/// (الأرقام تقريبية حسب معرفتي وقت كتابة هاد الكود — ما قدرت أتحقق من
-/// pub.dev مباشرة، فتأكدي من آخر إصدار متوافق مع Flutter عندك بعد
-/// `flutter pub get`، وصلّحي رقم الإصدار هون إذا لزم.)
 class AttachmentPreviewScreen extends StatefulWidget {
   final String fileName;
   final Uint8List bytes;
@@ -130,9 +104,6 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
         ],
       ),
       body: _buildBody(context, l10n, isDark, kind),
-      // معاينة الـ PDF عندها شريط أدوات وتنقّل خاص فيها (SfPdfViewer)،
-      // فمنخبي زر التحميل السفلي بحالتها حتى ما يتزاحم الاثنين، وبيضل
-      // زر التحميل بالـ AppBar متوفر دايماً.
       bottomNavigationBar: kind == _PreviewKind.pdf
           ? null
           : SafeArea(
@@ -190,8 +161,6 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
         );
 
       case _PreviewKind.pdf:
-        // SfPdfViewer.memory بيعرض الـ PDF فعلياً (كل الصفحات، مع تكبير
-        // وتصفّح) — بدون ما نحتاج نستخرج نص يدوياً متل باقي الأنواع.
         return SfPdfViewer.memory(widget.bytes);
 
       case _PreviewKind.unsupported:
@@ -199,9 +168,6 @@ class _AttachmentPreviewScreenState extends State<AttachmentPreviewScreen> {
     }
   }
 
-  /// بيحاول يبني ويجت المعاينة، ولو صار أي خطأ بالاستخراج (ملف تالف،
-  /// صيغة غير متوقعة...) بيرجع لبطاقة "ما في معاينة" العامة بدل ما
-  /// يوقّع التطبيق (crash) بشاشة بيضا.
   Widget _tryOrFallback(AppLocalizations l10n, bool isDark, Widget Function() builder) {
     try {
       return builder();
